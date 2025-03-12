@@ -1,0 +1,230 @@
+/* High Contrast Mode */
+:root.high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #121212;
+  --card-foreground: #ffffff;
+  --popover: #121212;
+  --popover-foreground: #ffffff;
+  --primary: #ffff00;
+  --primary-foreground: #000000;
+  --secondary: #ffffff;
+  --secondary-foreground: #000000;
+  --muted: #333333;
+  --muted-foreground: #ffffff;
+  --accent: #ffff00;
+  --accent-foreground: #000000;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --border: #ffffff;
+  --input: #333333;
+  --ring: #ffff00;
+}
+
+:root.high-contrast * {
+  border-color: var(--border);
+}
+
+:root.high-contrast a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+:root.high-contrast button:focus,
+:root.high-contrast a:focus,
+:root.high-contrast input:focus,
+:root.high-contrast select:focus,
+:root.high-contrast textarea:focus {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Large Text Mode */
+:root.large-text {
+  font-size: 120%;
+}
+
+:root.large-text h1 {
+  font-size: 2.5rem;
+}
+
+:root.large-text h2 {
+  font-size: 2rem;
+}
+
+:root.large-text h3 {
+  font-size: 1.75rem;
+}
+
+:root.large-text p, 
+:root.large-text li, 
+:root.large-text label, 
+:root.large-text input, 
+:root.large-text button {
+  font-size: 1.2rem;
+}
+
+:root.large-text .text-sm {
+  font-size: 1rem;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: no-preference) {
+  :root.reduced-motion * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Screen Reader Optimized */
+:root.screen-reader-optimized .sr-only {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+  border: 0 !important;
+}
+
+:root.screen-reader-optimized img:not([alt]),
+:root.screen-reader-optimized img[alt=""] {
+  outline: 5px solid red;
+}
+
+/* Enhanced Keyboard Navigation */
+:root.enhanced-keyboard-nav :focus {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.4) !important;
+  border-radius: 2px !important;
+  position: relative;
+  z-index: 1;
+}
+
+:root.enhanced-keyboard-nav button:focus,
+:root.enhanced-keyboard-nav a:focus,
+:root.enhanced-keyboard-nav input:focus,
+:root.enhanced-keyboard-nav select:focus,
+:root.enhanced-keyboard-nav textarea:focus,
+:root.enhanced-keyboard-nav [role="button"]:focus,
+:root.enhanced-keyboard-nav [tabindex="0"]:focus {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+}
+
+:root.enhanced-keyboard-nav .skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+:root.enhanced-keyboard-nav .skip-link:focus {
+  top: 0;
+}
+
+/* Focus indicator for keyboard navigation */
+:root.enhanced-keyboard-nav [data-focus-visible-added] {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+}
+
+/* Keyboard Navigation Styles */
+:root.keyboard-navigation :focus {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.4) !important;
+}
+
+:root.keyboard-navigation [data-focus-visible-added] {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.4) !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Skip link styles */
+.skip-link {
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.skip-link:focus {
+  clip: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  width: auto;
+  z-index: 9999;
+}
+
+/* Interactive elements focus styles */
+:root.keyboard-navigation button:focus,
+:root.keyboard-navigation a:focus,
+:root.keyboard-navigation input:focus,
+:root.keyboard-navigation select:focus,
+:root.keyboard-navigation textarea:focus,
+:root.keyboard-navigation [role="button"]:focus,
+:root.keyboard-navigation [tabindex="0"]:focus {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.4) !important;
+}
+
+/* Color Blind Modes */
+:root.protanopia {
+  --primary: #0000ff;
+  --primary-foreground: #ffffff;
+  --accent: #0000ff;
+  --accent-foreground: #ffffff;
+  --destructive: #0000ff;
+  --destructive-foreground: #ffffff;
+  --ring: #0000ff;
+}
+
+:root.deuteranopia {
+  --primary: #0000ff;
+  --primary-foreground: #ffffff;
+  --accent: #0000ff;
+  --accent-foreground: #ffffff;
+  --destructive: #0000ff;
+  --destructive-foreground: #ffffff;
+  --ring: #0000ff;
+}
+
+:root.tritanopia {
+  --primary: #ff0000;
+  --primary-foreground: #ffffff;
+  --accent: #ff0000;
+  --accent-foreground: #ffffff;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --ring: #ff0000;
+}
+
+:root.achromatopsia {
+  --primary: #808080;
+  --primary-foreground: #ffffff;
+  --secondary: #505050;
+  --secondary-foreground: #ffffff;
+  --accent: #606060;
+  --accent-foreground: #ffffff;
+  --destructive: #303030;
+  --destructive-foreground: #ffffff;
+  --ring: #808080;
+} 

@@ -1,0 +1,247 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppName": {
+      "type": "string",
+      "defaultValue": "bingo-job-coach-platform",
+      "metadata": {
+        "description": "The name of the web app that you wish to create."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "The location for all resources."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "metadata": {
+        "description": "The SKU of App Service Plan."
+      }
+    },
+    "linuxFxVersion": {
+      "type": "string",
+      "defaultValue": "NODE|18-lts",
+      "metadata": {
+        "description": "The Runtime stack of current web app"
+      }
+    },
+    "cosmosDbAccountName": {
+      "type": "string",
+      "defaultValue": "bingo-cosmos-db",
+      "metadata": {
+        "description": "The name of the Cosmos DB account"
+      }
+    },
+    "cosmosDbDatabaseName": {
+      "type": "string",
+      "defaultValue": "bingo-database",
+      "metadata": {
+        "description": "The name of the Cosmos DB database"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "bingostorage",
+      "metadata": {
+        "description": "The name of the storage account"
+      }
+    },
+    "openAiServiceName": {
+      "type": "string",
+      "defaultValue": "bingo-openai",
+      "metadata": {
+        "description": "The name of the Azure OpenAI service"
+      }
+    },
+    "formRecognizerName": {
+      "type": "string",
+      "defaultValue": "bingo-form-recognizer",
+      "metadata": {
+        "description": "The name of the Form Recognizer service"
+      }
+    },
+    "textAnalyticsName": {
+      "type": "string",
+      "defaultValue": "bingo-text-analytics",
+      "metadata": {
+        "description": "The name of the Text Analytics service"
+      }
+    },
+    "communicationServiceName": {
+      "type": "string",
+      "defaultValue": "bingo-communication",
+      "metadata": {
+        "description": "The name of the Communication Services"
+      }
+    }
+  },
+  "variables": {
+    "appServicePlanName": "[concat(parameters('webAppName'), '-plan')]",
+    "webSiteName": "[parameters('webAppName')]",
+    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('sku')]"
+      },
+      "kind": "linux",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2021-02-01",
+      "name": "[variables('webSiteName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "[parameters('linuxFxVersion')]",
+          "appSettings": [
+            {
+              "name": "WEBSITE_NODE_DEFAULT_VERSION",
+              "value": "~18"
+            },
+            {
+              "name": "AZURE_COSMOS_ENDPOINT",
+              "value": "[concat('https://', parameters('cosmosDbAccountName'), '.documents.azure.com:443/')]"
+            },
+            {
+              "name": "AZURE_COSMOS_DATABASE",
+              "value": "[parameters('cosmosDbDatabaseName')]"
+            },
+            {
+              "name": "AZURE_STORAGE_CONNECTION_STRING",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountId'), '2019-06-01').keys[0].value, ';EndpointSuffix=core.windows.net')]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2021-10-15",
+      "name": "[parameters('cosmosDbAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "GlobalDocumentDB",
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "locations": [
+          {
+            "locationName": "[parameters('location')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "capabilities": [
+          {
+            "name": "EnableServerless"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+      "apiVersion": "2021-10-15",
+      "name": "[concat(parameters('cosmosDbAccountName'), '/', parameters('cosmosDbDatabaseName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+      ],
+      "properties": {
+        "resource": {
+          "id": "[parameters('cosmosDbDatabaseName')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-06-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "supportsHttpsTrafficOnly": true,
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2021-10-01",
+      "name": "[parameters('openAiServiceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "OpenAI",
+      "properties": {
+        "customSubDomainName": "[parameters('openAiServiceName')]"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2021-10-01",
+      "name": "[parameters('formRecognizerName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "FormRecognizer",
+      "properties": {
+        "customSubDomainName": "[parameters('formRecognizerName')]"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2021-10-01",
+      "name": "[parameters('textAnalyticsName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "S0"
+      },
+      "kind": "TextAnalytics",
+      "properties": {
+        "customSubDomainName": "[parameters('textAnalyticsName')]"
+      }
+    },
+    {
+      "type": "Microsoft.Communication/communicationServices",
+      "apiVersion": "2020-08-20",
+      "name": "[parameters('communicationServiceName')]",
+      "location": "global",
+      "properties": {
+        "dataLocation": "United States"
+      }
+    }
+  ],
+  "outputs": {
+    "webAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', variables('webSiteName'), '.azurewebsites.net')]"
+    },
+    "cosmosDbEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))).documentEndpoint]"
+    },
+    "storageAccountConnectionString": {
+      "type": "string",
+      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountId'), '2019-06-01').keys[0].value, ';EndpointSuffix=core.windows.net')]"
+    }
+  }
+} 
