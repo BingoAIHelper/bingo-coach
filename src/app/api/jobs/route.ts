@@ -1,82 +1,37 @@
+import { getJobs, createJob } from "@/lib/database";
 import { NextRequest, NextResponse } from "next/server";
-import { getJobs, createJob } from "@/lib/azure/cosmos";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get("query") || "";
-    const location = searchParams.get("location") || "";
-    const category = searchParams.get("category") || "";
-    
-    // Build the query for Cosmos DB
-    let querySpec: any = { query: "SELECT * FROM c" };
-    
-    if (query || location || category) {
-      let queryString = "SELECT * FROM c WHERE ";
-      const queryParams: any[] = [];
-      
-      if (query) {
-        queryString += "CONTAINS(c.title, @query) OR CONTAINS(c.description, @query)";
-        queryParams.push({ name: "@query", value: query });
-      }
-      
-      if (location) {
-        if (queryParams.length > 0) queryString += " AND ";
-        queryString += "CONTAINS(c.location, @location)";
-        queryParams.push({ name: "@location", value: location });
-      }
-      
-      if (category) {
-        if (queryParams.length > 0) queryString += " AND ";
-        queryString += "c.category = @category";
-        queryParams.push({ name: "@category", value: category });
-      }
-      
-      querySpec = {
-        query: queryString,
-        parameters: queryParams
-      };
-    }
-    
-    // Get jobs from Cosmos DB
-    const jobs = await getJobs(querySpec);
-    
-    return NextResponse.json({ jobs });
+    const jobs = await getJobs();
+    return NextResponse.json(jobs);
   } catch (error) {
-    console.error("Error getting jobs:", error);
+    console.error("Error fetching jobs:", error);
     return NextResponse.json(
-      { error: "Failed to get jobs" },
+      { error: "An error occurred while fetching jobs" },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const jobData = await request.json();
+    const jobData = await req.json();
     
-    // Validate job data
-    if (!jobData.title || !jobData.description || !jobData.company) {
+    // Validate required fields
+    if (!jobData.title || !jobData.company || !jobData.description || !jobData.requirements) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
     
-    // Add additional fields
-    jobData.id = `job-${Date.now()}`;
-    jobData.createdAt = new Date().toISOString();
-    jobData.updatedAt = new Date().toISOString();
-    
-    // Create job in Cosmos DB
-    const job = await createJob(jobData);
-    
-    return NextResponse.json({ job }, { status: 201 });
+    const newJob = await createJob(jobData);
+    return NextResponse.json(newJob, { status: 201 });
   } catch (error) {
     console.error("Error creating job:", error);
     return NextResponse.json(
-      { error: "Failed to create job" },
+      { error: "An error occurred while creating the job" },
       { status: 500 }
     );
   }

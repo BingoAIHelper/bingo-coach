@@ -21,17 +21,21 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { settings: accessibilitySettings, updateSettings: updateAccessibilitySettings } = useAccessibility();
   
-  // Mock user data
+  const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState({
-    name: "Alex Johnson",
-    email: "alex.johnson@example.com",
-    phone: "(555) 123-4567",
-    bio: "I'm a software developer with 5 years of experience, specializing in frontend development with React and TypeScript. I'm looking for remote opportunities that offer flexibility and growth.",
-    location: "Portland, OR",
-    skills: ["JavaScript", "TypeScript", "React", "Node.js", "Accessibility", "UI/UX"],
-    education: "Bachelor of Science in Computer Science, University of Oregon",
-    experience: "5 years",
-    profileComplete: 85,
+    id: "",
+    firstName: "",
+    lastName: "",
+    name: "",
+    email: "",
+    phone: "",
+    bio: "",
+    location: "",
+    profileImage: "",
+    skills: [] as string[],
+    education: "",
+    experience: "",
+    profileComplete: 0,
     accessibility: {
       highContrast: accessibilitySettings.highContrast,
       largeText: accessibilitySettings.largeText,
@@ -52,6 +56,48 @@ export default function ProfilePage() {
       allowDataCollection: true,
     },
   });
+
+  // Fetch user data from the API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (session?.user?.id) {
+        try {
+          setLoading(true);
+          const response = await fetch(`/api/users/profile?userId=${session.user.id}`);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch user data');
+          }
+          
+          const userData = await response.json();
+          
+          // Calculate profile completion percentage
+          const requiredFields = ['firstName', 'lastName', 'email', 'bio', 'location', 'phone'];
+          const filledFields = requiredFields.filter(field =>
+            userData[field] && userData[field].toString().trim() !== ''
+          );
+          const profileComplete = Math.round((filledFields.length / requiredFields.length) * 100);
+          
+          setUserData(prev => ({
+            ...prev,
+            ...userData,
+            profileComplete,
+            // Default values for fields not in the database schema
+            skills: userData.skills || [],
+            education: userData.education || "",
+            experience: userData.experience || "",
+          }));
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          toast.error('Failed to load profile data');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [session]);
 
   // Sync accessibility settings with context
   useEffect(() => {
@@ -135,20 +181,49 @@ export default function ProfilePage() {
   
   const handleSaveProfile = async () => {
     try {
-      // In a real app, you would send the data to your API
-      // await fetch("/api/profile", {
-      //   method: "PUT",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify(userData),
-      // });
+      setLoading(true);
       
-      // For now, just show a success message
+      // Prepare the data for update - only include fields that exist in the User model
+      const updateData = {
+        id: userData.id,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        name: userData.name || `${userData.firstName} ${userData.lastName}`,
+        email: userData.email,
+        phone: userData.phone,
+        bio: userData.bio,
+        location: userData.location,
+        profileImage: userData.profileImage,
+      };
+      
+      // Send to the API
+      const response = await fetch("/api/users/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+      
+      const updatedUser = await response.json();
+      
+      // Update local state with the response
+      setUserData(prev => ({
+        ...prev,
+        ...updatedUser,
+      }));
+      
       toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to update profile. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -165,12 +240,16 @@ export default function ProfilePage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-end">
-                <p className="font-medium">{userData.name}</p>
+                <p className="font-medium">{userData.firstName} {userData.lastName}</p>
                 <p className="text-sm text-muted-foreground">{userData.email}</p>
               </div>
               <Avatar className="h-12 w-12">
-                <AvatarImage src="/avatars/alex.jpg" alt={userData.name} />
-                <AvatarFallback>{userData.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                {userData.profileImage ? (
+                  <AvatarImage src={userData.profileImage} alt={`${userData.firstName} ${userData.lastName}`} />
+                ) : null}
+                <AvatarFallback>
+                  {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
+                </AvatarFallback>
               </Avatar>
             </div>
           </div>
@@ -256,11 +335,19 @@ export default function ProfilePage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        value={userData.name}
-                        onChange={(e) => handleInputChange("name", e.target.value)}
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={userData.firstName}
+                        onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={userData.lastName}
+                        onChange={(e) => handleInputChange("lastName", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -303,7 +390,12 @@ export default function ProfilePage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveProfile}>Save Changes</Button>
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={loading}
+                  >
+                    {loading ? "Saving..." : "Save Changes"}
+                  </Button>
                 </CardFooter>
               </Card>
               
@@ -407,7 +499,12 @@ export default function ProfilePage() {
                   </Tabs>
                 </CardContent>
                 <CardFooter>
-                  <Button onClick={handleSaveProfile}>Save Preferences</Button>
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={loading}
+                  >
+                    {loading ? "Saving..." : "Save Preferences"}
+                  </Button>
                 </CardFooter>
               </Card>
               

@@ -126,6 +126,8 @@ export function AccessibilityOnboarding() {
   const handleComplete = () => {
     updateSettings({ hasCompletedOnboarding: true });
     setOpen(false);
+    // Ensure the site-visited flag is set
+    localStorage.setItem("bingo-site-visited", "true");
     speakText("Accessibility settings saved. You can change these settings at any time by clicking the accessibility button in the bottom right corner.");
   };
 
@@ -133,6 +135,8 @@ export function AccessibilityOnboarding() {
     // Mark as completed but don't save any settings
     updateSettings({ hasCompletedOnboarding: true });
     setOpen(false);
+    // Ensure the site-visited flag is set
+    localStorage.setItem("bingo-site-visited", "true");
     speakText("Accessibility setup skipped. You can configure accessibility settings at any time by clicking the accessibility button in the bottom right corner.");
   };
 

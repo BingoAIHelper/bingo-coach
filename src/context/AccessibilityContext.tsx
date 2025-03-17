@@ -60,6 +60,19 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
       } catch (error) {
         console.error("Failed to parse accessibility settings:", error);
       }
+    } else {
+      // Check if user has visited the site before
+      const hasVisitedBefore = localStorage.getItem("bingo-site-visited");
+      if (hasVisitedBefore) {
+        // If they've visited before, mark onboarding as completed
+        setSettings(prev => ({
+          ...prev,
+          hasCompletedOnboarding: true
+        }));
+      } else {
+        // Mark that they've visited the site at least once
+        localStorage.setItem("bingo-site-visited", "true");
+      }
     }
     setIsLoaded(true);
   }, []);

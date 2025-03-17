@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { createAssessment, getAssessmentByUserId } from "@/lib/azure/cosmos";
+import { createAssessment, getAssessmentByUserId } from "@/lib/database";
 import { z } from "zod";
 
 // Define validation schema for assessment data
@@ -78,23 +78,19 @@ export async function POST(request: Request) {
     
     const assessmentData = validationResult.data;
     
-    // Create assessment record with user information
-    const assessment = {
+    // Create assessment in the database
+    const assessment = await createAssessment({
       userId: session.user.id,
-      userEmail: session.user.email,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      title: 'User Assessment',
+      score: null,
+      feedback: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       ...assessmentData,
-    };
+    });
     
-    // TODO: Store in Cosmos DB
-    // This is a placeholder for the actual database operation
-    // In a real implementation, you would use the Cosmos DB SDK to store the data
-    console.log("Assessment data to be stored:", assessment);
-    
-    // For now, we'll simulate a successful storage
     return NextResponse.json(
-      { message: "Assessment submitted successfully", assessmentId: "temp-id-" + Date.now() },
+      { message: "Assessment submitted successfully", assessmentId: assessment.id },
       { status: 201 }
     );
   } catch (error) {

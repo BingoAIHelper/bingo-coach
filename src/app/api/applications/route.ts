@@ -6,7 +6,7 @@ import {
   getApplicationsByUserId, 
   getJobById, 
   getResumesByUserId 
-} from "@/lib/azure/cosmos";
+} from "@/lib/database";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     
     // Verify resume exists and belongs to user
     const resumes = await getResumesByUserId(userId);
-    const resume = resumes.find(r => r.id === applicationData.resumeId);
+    const resume = resumes?.find(r => r.id === applicationData.resumeId);
     
     if (!resume) {
       return NextResponse.json(
@@ -85,17 +85,13 @@ export async function POST(request: NextRequest) {
     
     // Create application record
     const application = await createApplication({
-      id: `application-${Date.now()}`,
       userId,
       jobId: applicationData.jobId,
-      resumeId: applicationData.resumeId,
-      status: "submitted",
+      status: "Applied",
       coverLetter: applicationData.coverLetter || "",
-      additionalNotes: applicationData.additionalNotes || "",
-      jobTitle: job.title,
-      companyName: job.company,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      resumeId: applicationData.resumeId,
+      submittedDate: new Date(),
+      updatedAt: new Date(),
     });
     
     return NextResponse.json({ application }, { status: 201 });

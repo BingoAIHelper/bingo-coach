@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getResumesByUserId, createResume } from "@/lib/azure/cosmos";
+import { getResumesByUserId, createResume } from "@/lib/database";
 import { analyzeResume } from "@/lib/azure/openai";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -63,15 +63,12 @@ export async function POST(request: NextRequest) {
     
     // Create resume record
     const resumeData = {
-      id: `resume-${Date.now()}`,
       userId: (session.user as any).id,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
+      title: file.name,
       content: fileText,
-      analysis,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      file: file.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
     
     const resume = await createResume(resumeData);

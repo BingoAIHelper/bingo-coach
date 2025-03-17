@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,8 @@ import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 
 export default function SignIn() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,21 +27,31 @@ export default function SignIn() {
     setError("");
 
     try {
-      // In a real application, this would be an API call to authenticate the user
-      // For now, we'll just simulate a successful login
-      console.log("Signing in with:", { email, password });
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (result?.error) {
+        setError("Invalid email or password. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       // Redirect to dashboard after successful login
-      router.push("/dashboard");
+      // Use a client-side redirect without passing through the middleware
+      window.location.href = callbackUrl || "/dashboard";
     } catch (err) {
       console.error("Login error:", err);
-      setError("Invalid email or password. Please try again.");
-    } finally {
+      setError("An error occurred during sign in. Please try again.");
       setIsLoading(false);
     }
+  };
+
+  const handleProviderSignIn = (provider: string) => {
+    // When signing in with a provider, use the default NextAuth redirect
+    signIn(provider, { callbackUrl });
   };
 
   return (
@@ -129,10 +142,20 @@ export default function SignIn() {
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" type="button" className="w-full">
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  className="w-full"
+                  onClick={() => handleProviderSignIn("azure-ad")}
+                >
                   Microsoft
                 </Button>
-                <Button variant="outline" type="button" className="w-full">
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  className="w-full"
+                  onClick={() => handleProviderSignIn("google")}
+                >
                   Google
                 </Button>
               </div>
