@@ -4,14 +4,45 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { MainLayout } from "@/components/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { Briefcase, FileText, Calendar, MessageSquare, Award, User, GraduationCap, CheckCircle } from "lucide-react";
+import { Bell, Briefcase, Award, Calendar, MessageSquare, FileText, CheckCircle } from "lucide-react";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { DashboardDocuments } from "@/components/documents/DashboardDocuments";
+import { usePathname, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Progress } from "@/components/ui/progress";
+import { AIRecommendations } from "@/components/AIRecommendations";
+
+// Import section components
+import AssessmentSection from "@/components/dashboard/AssessmentSection";
+import CoachesSection from "@/components/dashboard/CoachesSection";
+import JobsSection from "@/components/dashboard/JobsSection";
+import ResourcesSection from "@/components/dashboard/ResourcesSection";
 
 export default function SeekerDashboardPage() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentSection = searchParams.get("section");
+
+  const getSectionTitle = () => {
+    switch (currentSection) {
+      case "documents":
+        return { title: "Documents", description: "Manage your documents and resumes" };
+      case "jobs":
+        return { title: "Jobs", description: "Find and apply for jobs" };
+      case "assessment":
+        return { title: "Assessment", description: "Complete your skills assessment" };
+      case "coaches":
+        return { title: "Coaches", description: "Find and connect with career coaches" };
+      case "resources":
+        return { title: "Resources", description: "Access career development resources" };
+      default:
+        return { title: "Dashboard", description: "Track your job search progress" };
+    }
+  };
+
+  const { title, description } = getSectionTitle();
   
   // Redirect to login if not authenticated
   if (status === "unauthenticated") {
@@ -31,444 +62,272 @@ export default function SeekerDashboardPage() {
     );
   }
   
-  // Note: We don't need to check role here as the middleware will handle that
-  // Any unauthorized access will be redirected by middleware before this component renders
+  const renderDashboardContent = () => {
+    return (
+      <div className="flex flex-col gap-8">
+        {/* Profile Completion Banner */}
+        <div className="card-gradient rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h3 className="font-semibold text-lg">Complete Your Profile</h3>
+                <p className="text-muted-foreground">A complete profile increases your chances of finding the right job match.</p>
+              </div>
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex-1 md:w-40">
+                  <Progress value={65} className="h-2" />
+                  <p className="text-xs text-right mt-1">65% complete</p>
+                </div>
+                <Button size="sm" asChild>
+                  <Link href="/profile">Complete Profile</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard Stats */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="stats-card group">
+            <div className="stats-card-header">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-blue-500/10 p-2.5 group-hover:bg-blue-500/20 transition-colors">
+                  <Briefcase className="h-5 w-5 text-blue-500" />
+                </div>
+                <h3 className="font-medium">Applications</h3>
+              </div>
+            </div>
+            <div className="stats-card-content">
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-3xl font-bold tracking-tight">8</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    2 new this week
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-green-600">+25%</div>
+                  <p className="text-xs text-muted-foreground">vs last week</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group">
+            <div className="stats-card-header">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-purple-500/10 p-2.5 group-hover:bg-purple-500/20 transition-colors">
+                  <Award className="h-5 w-5 text-purple-500" />
+                </div>
+                <h3 className="font-medium">Job Matches</h3>
+              </div>
+            </div>
+            <div className="stats-card-content">
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-3xl font-bold tracking-tight">14</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    5 new matches
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-green-600">+40%</div>
+                  <p className="text-xs text-muted-foreground">vs last week</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group">
+            <div className="stats-card-header">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-amber-500/10 p-2.5 group-hover:bg-amber-500/20 transition-colors">
+                  <Calendar className="h-5 w-5 text-amber-500" />
+                </div>
+                <h3 className="font-medium">Interviews</h3>
+              </div>
+            </div>
+            <div className="stats-card-content">
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-3xl font-bold tracking-tight">3</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Next in 2 days
+                  </p>
+                </div>
+                <div className="text-right">
+                  <Button variant="ghost" size="sm" className="text-xs">Schedule</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card group">
+            <div className="stats-card-header">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-green-500/10 p-2.5 group-hover:bg-green-500/20 transition-colors">
+                  <MessageSquare className="h-5 w-5 text-green-500" />
+                </div>
+                <h3 className="font-medium">Messages</h3>
+              </div>
+            </div>
+            <div className="stats-card-content">
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-3xl font-bold tracking-tight">5</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    2 unread
+                  </p>
+                </div>
+                <div className="text-right">
+                  <Button variant="ghost" size="sm" className="text-xs">View All</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Recommendations */}
+        <AIRecommendations />
+
+        {/* Job Matches Section */}
+        <div className="card-gradient rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-primary/10 p-2">
+                  <Award className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Recommended Jobs</h3>
+                  <p className="text-sm text-muted-foreground">Based on your profile and preferences</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm">
+                <FileText className="h-4 w-4 mr-2" />
+                View All Jobs
+              </Button>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {[
+                {
+                  title: "Senior UX Designer",
+                  company: "TechCorp Solutions",
+                  location: "Remote",
+                  salary: "$120k - $150k",
+                  matchScore: 95,
+                  tags: ["Remote", "Full-time", "Senior Level"]
+                },
+                {
+                  title: "Product Designer",
+                  company: "Design Studio Inc.",
+                  location: "New York, NY",
+                  salary: "$90k - $120k",
+                  matchScore: 88,
+                  tags: ["Hybrid", "Full-time", "Healthcare"]
+                },
+                {
+                  title: "UI/UX Designer",
+                  company: "Creative Agency",
+                  location: "San Francisco, CA",
+                  salary: "$100k - $130k",
+                  matchScore: 82,
+                  tags: ["On-site", "Full-time", "401k"]
+                }
+              ].map((job, index) => (
+                <div key={index} className="group p-4 rounded-lg border border-gray-100 dark:border-gray-800 hover:border-primary/20 hover:bg-primary/5 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-medium text-lg">{job.title}</h3>
+                        <div className={`px-2 py-1 rounded-full text-sm font-medium
+                          ${job.matchScore >= 90 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          job.matchScore >= 80 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                          {job.matchScore}% Match
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{job.company} • {job.location}</p>
+                      <p className="text-sm font-medium text-primary mb-3">{job.salary}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {job.tags.map((tag, i) => (
+                          <span key={i} className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 min-w-[120px] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="w-full">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Details
+                      </Button>
+                      <Button size="sm" className="w-full">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Apply
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    switch (currentSection) {
+      case "documents":
+        return <DashboardDocuments />;
+      case "jobs":
+        return <JobsSection />;
+      case "assessment":
+        return <AssessmentSection />;
+      case "coaches":
+        return <CoachesSection />;
+      case "resources":
+        return <ResourcesSection />;
+      default:
+        return renderDashboardContent();
+    }
+  };
   
   return (
     <MainLayout>
-      <div className="container py-10">
-        <div className="flex flex-col gap-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Seeker Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {session?.user?.name || "User"}! Track your job search journey.
-            </p>
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <DashboardSidebar />
+        <div className="flex-1 overflow-auto">
+          <div className="container max-w-6xl mx-auto p-8">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-2xl font-bold">{title}</h1>
+                <p className="text-muted-foreground">{description}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                {!currentSection && (
+                  <div className="relative">
+                    <input
+                      type="search"
+                      placeholder="Search jobs..."
+                      className="w-64 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                    />
+                  </div>
+                )}
+                <Button variant="outline" size="icon" className="rounded-xl">
+                  <Bell className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            {renderContent()}
           </div>
-          
-          {/* Profile Completion Banner */}
-          <Card className="bg-muted">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h3 className="font-semibold text-lg">Complete Your Profile</h3>
-                  <p className="text-muted-foreground">A complete profile increases your chances of finding the right job match.</p>
-                </div>
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                  <div className="flex-1 md:w-40">
-                    <Progress value={65} className="h-2" />
-                    <p className="text-xs text-right mt-1">65% complete</p>
-                  </div>
-                  <Button size="sm" asChild>
-                    <Link href="/profile">Complete Profile</Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Dashboard Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Job Applications</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-muted-foreground">
-                  2 new in the last week
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resumes</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">2</div>
-                <p className="text-xs text-muted-foreground">
-                  Last updated 2 weeks ago
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Coaching Sessions</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3</div>
-                <p className="text-xs text-muted-foreground">
-                  Next session in 2 days
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Job Matches</CardTitle>
-                <Award className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">14</div>
-                <p className="text-xs text-muted-foreground">
-                  5 new matches this week
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Accessibility Reminder */}
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <User className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Accessibility Settings</h3>
-                  <p className="text-sm text-muted-foreground">Customize your experience to match your preferences. We've detected you might benefit from text-to-speech features.</p>
-                  <Button variant="link" size="sm" className="p-0 h-auto mt-2" asChild>
-                    <Link href="/accessibility">Adjust Accessibility Settings</Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Tabs defaultValue="jobMatches" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="jobMatches">Job Matches</TabsTrigger>
-              <TabsTrigger value="applications">Applications</TabsTrigger>
-              <TabsTrigger value="resumes">Resumes</TabsTrigger>
-              <TabsTrigger value="coaches">My Coaches</TabsTrigger>
-              <TabsTrigger value="training">Training</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="jobMatches" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Recommended Jobs</h2>
-                <Button asChild>
-                  <Link href="/jobs">Browse All Jobs</Link>
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>AI-Matched Job Opportunities</CardTitle>
-                  <CardDescription>
-                    Based on your skills, experience, and accessibility needs.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        title: "Accessibility Specialist",
-                        company: "Inclusive Tech",
-                        location: "Remote",
-                        matchScore: 95,
-                        accommodations: ["Flexible hours", "Remote work", "Assistive tech provided"]
-                      },
-                      {
-                        title: "Customer Support Representative",
-                        company: "ServiceFirst Inc.",
-                        location: "Chicago, IL (Hybrid)",
-                        matchScore: 88,
-                        accommodations: ["Accessible workplace", "Flexible schedule"]
-                      },
-                      {
-                        title: "Content Writer",
-                        company: "Digital Media Group",
-                        location: "Remote",
-                        matchScore: 82,
-                        accommodations: ["Work from home", "Flexible deadlines"]
-                      },
-                    ].map((job, index) => (
-                      <div key={index} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{job.title}</h3>
-                            <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                              {job.matchScore}% Match
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{job.company} • {job.location}</p>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {job.accommodations.map((item, i) => (
-                              <span key={i} className="text-xs bg-muted px-2 py-1 rounded-full">
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex flex-row md:flex-col gap-2 justify-end">
-                          <Button variant="outline" size="sm">View Details</Button>
-                          <Button size="sm">Apply Now</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="applications" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Your Applications</h2>
-                <Button variant="outline" asChild>
-                  <Link href="/applications">View All</Link>
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Application Status</CardTitle>
-                  <CardDescription>
-                    Track the progress of your job applications.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        title: "UX Designer",
-                        company: "AccessTech Solutions",
-                        date: "2023-07-10",
-                        status: "Interview Scheduled",
-                        nextStep: "Video interview on July 15, 2023"
-                      },
-                      {
-                        title: "Content Manager",
-                        company: "Digital Media Group",
-                        date: "2023-07-05",
-                        status: "Application Submitted",
-                        nextStep: "Waiting for review"
-                      },
-                      {
-                        title: "Customer Support Specialist",
-                        company: "TechHelp Inc.",
-                        date: "2023-07-01",
-                        status: "Under Review",
-                        nextStep: "Assessment test to be sent"
-                      },
-                    ].map((app, index) => (
-                      <div key={index} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
-                        <div>
-                          <h3 className="font-medium">{app.title}</h3>
-                          <p className="text-sm text-muted-foreground">{app.company}</p>
-                          <div className="mt-1">
-                            <p className="text-xs text-muted-foreground">Applied on {app.date}</p>
-                          </div>
-                        </div>
-                        <div className="mt-2 md:mt-0 text-right">
-                          <p className="text-sm font-medium">{app.status}</p>
-                          <p className="text-xs text-muted-foreground">Next: {app.nextStep}</p>
-                          <Button variant="link" size="sm" className="h-auto p-0 mt-1">View Details</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="resumes" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Your Resumes</h2>
-                <Button asChild>
-                  <Link href="/resume/new">Create New Resume</Link>
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resume Management</CardTitle>
-                  <CardDescription>
-                    Create and manage tailored resumes for different job types.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        title: "Accessibility Specialist Resume",
-                        lastUpdated: "2023-07-01",
-                        score: 85,
-                        feedback: "Add more quantifiable achievements"
-                      },
-                      {
-                        title: "General Professional Resume",
-                        lastUpdated: "2023-06-15",
-                        score: 92,
-                        feedback: "Great overall content and structure"
-                      },
-                    ].map((resume, index) => (
-                      <div key={index} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
-                        <div>
-                          <h3 className="font-medium">{resume.title}</h3>
-                          <p className="text-sm text-muted-foreground">Last updated: {resume.lastUpdated}</p>
-                          <p className="text-xs text-muted-foreground mt-1">Feedback: {resume.feedback}</p>
-                        </div>
-                        <div className="mt-2 md:mt-0 flex flex-col md:flex-row items-end md:items-center gap-2">
-                          <div className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <span className={`text-sm font-medium ${resume.score >= 90 ? "text-green-600" : "text-amber-600"}`}>
-                                Score: {resume.score}/100
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">View</Button>
-                            <Button variant="outline" size="sm">Edit</Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="coaches" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Your Coaches</h2>
-                <Button asChild>
-                  <Link href="/coaches">Find Coaches</Link>
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Coaching Support</CardTitle>
-                  <CardDescription>
-                    Your matched coaches and upcoming sessions.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        name: "Sarah Johnson",
-                        specialty: "Career Transitions",
-                        matchScore: 95,
-                        nextSession: "July 15, 2023 • 10:00 AM",
-                        communication: "Video call with captions"
-                      },
-                      {
-                        name: "Michael Chen",
-                        specialty: "Technical Interview Prep",
-                        matchScore: 88,
-                        nextSession: "July 22, 2023 • 2:00 PM",
-                        communication: "Chat-based coaching"
-                      },
-                    ].map((coach, index) => (
-                      <div key={index} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{coach.name}</h3>
-                            <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                              {coach.matchScore}% Match
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{coach.specialty}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Communication: {coach.communication}
-                          </p>
-                        </div>
-                        <div className="mt-2 md:mt-0 text-right">
-                          <p className="text-sm font-medium">Next Session</p>
-                          <p className="text-xs text-muted-foreground">{coach.nextSession}</p>
-                          <div className="flex gap-2 mt-2 justify-end">
-                            <Button variant="outline" size="sm">
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Message
-                            </Button>
-                            <Button size="sm">Schedule</Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="training" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Training Resources</h2>
-                <Button variant="outline" asChild>
-                  <Link href="/training">View All Training</Link>
-                </Button>
-              </div>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personalized Learning Path</CardTitle>
-                  <CardDescription>
-                    Recommended training based on your profile and goals.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        title: "Interview Skills for Anxiety Management",
-                        type: "Video Course",
-                        duration: "45 minutes",
-                        progress: 65,
-                        accessibility: ["Captions", "Transcript"]
-                      },
-                      {
-                        title: "Resume Writing Masterclass",
-                        type: "Interactive Workshop",
-                        duration: "1.5 hours",
-                        progress: 30,
-                        accessibility: ["Screen reader compatible", "Text-based alternatives"]
-                      },
-                      {
-                        title: "Workplace Accommodations: Know Your Rights",
-                        type: "Webinar",
-                        duration: "60 minutes",
-                        progress: 0,
-                        accessibility: ["ASL interpretation", "Captions"]
-                      },
-                    ].map((course, index) => (
-                      <div key={index} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
-                        <div>
-                          <h3 className="font-medium">{course.title}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm text-muted-foreground">{course.type} • {course.duration}</p>
-                          </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {course.accessibility.map((item, i) => (
-                              <span key={i} className="text-xs bg-muted px-2 py-1 rounded-full">
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-3 md:mt-0 flex flex-col items-end justify-center min-w-[120px]">
-                          <div className="w-full md:w-24">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-muted-foreground">Progress</span>
-                              <span className="text-xs">{course.progress}%</span>
-                            </div>
-                            <Progress value={course.progress} className="h-2" />
-                          </div>
-                          <Button variant="link" size="sm" className="mt-2">
-                            {course.progress === 0 ? "Start" : "Continue"}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
     </MainLayout>
   );
-} 
+}

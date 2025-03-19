@@ -185,33 +185,75 @@ export async function getJobById(jobId: string) {
 }
 
 // Coach operations
+import { formatCoachForStorage, formatCoachFromStorage } from '@/lib/utils/coach';
+
 export async function createCoach(coachData: any) {
+  const formattedData = formatCoachForStorage(coachData);
+  
   if (dbType === 'azure') {
-    return cosmosDb.createCoach(coachData);
+    const coach = await cosmosDb.createCoach(formattedData);
+    return formatCoachFromStorage(coach);
   } else {
-    return prisma.coach.create({
-      data: coachData,
+    const coach = await prisma.coach.create({
+      data: formattedData,
+      include: {
+        matches: true,
+        conversations: true,
+      },
     });
+    return formatCoachFromStorage(coach);
   }
 }
 
 export async function getCoaches(querySpec: any = { query: "SELECT * FROM c" }) {
   if (dbType === 'azure') {
     const coaches = await cosmosDb.getCoaches(querySpec);
-    return coaches.map(formatFromCosmosToLocal);
+    return coaches.map(coach =>
+      formatCoachFromStorage(formatFromCosmosToLocal(coach))
+    );
   } else {
-    return prisma.coach.findMany();
+    const coaches = await prisma.coach.findMany({
+      include: {
+        matches: true,
+        conversations: true,
+      },
+    });
+    return coaches.map(formatCoachFromStorage);
   }
 }
 
 export async function getCoachById(coachId: string) {
   if (dbType === 'azure') {
     const coach = await cosmosDb.getCoachById(coachId);
-    return formatFromCosmosToLocal(coach);
+    return coach ? formatCoachFromStorage(formatFromCosmosToLocal(coach)) : null;
   } else {
-    return prisma.coach.findUnique({
+    const coach = await prisma.coach.findUnique({
       where: { id: coachId },
+      include: {
+        matches: true,
+        conversations: true,
+      },
     });
+    return coach ? formatCoachFromStorage(coach) : null;
+  }
+}
+
+export async function updateCoach(coachId: string, coachData: any) {
+  const formattedData = formatCoachForStorage(coachData);
+  
+  if (dbType === 'azure') {
+    const coach = await cosmosDb.updateCoach(coachId, formattedData);
+    return formatCoachFromStorage(coach);
+  } else {
+    const coach = await prisma.coach.update({
+      where: { id: coachId },
+      data: formattedData,
+      include: {
+        matches: true,
+        conversations: true,
+      },
+    });
+    return formatCoachFromStorage(coach);
   }
 }
 
@@ -292,6 +334,25 @@ export async function getAssessments() {
   }
 }
 
+export async function getAssessmentById(assessmentId: string) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.getAssessmentById === 'function') {
+      const assessment = await cosmosDb.getAssessmentById(assessmentId);
+      return formatFromCosmosToLocal(assessment);
+    } else {
+      console.warn('getAssessmentById not implemented in cosmosDb module');
+      return null;
+    }
+  } else {
+    return prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      include: {
+        user: true,
+      },
+    });
+  }
+}
+
 // Application operations
 export async function createApplication(applicationData: any) {
   if (dbType === 'azure') {
@@ -347,6 +408,215 @@ export async function getApplicationById(applicationId: string) {
         job: true,
         user: true,
       },
+    });
+  }
+}
+// Document operations
+export async function createDocument(documentData: any) {
+  // For Document operations, we'll use Prisma directly for now since Cosmos implementation is not available
+  if (dbType === 'azure') {
+    console.warn('Using Prisma for document operations in Azure environment');
+  }
+  
+  return prisma.document.create({
+    data: documentData,
+  });
+}
+
+export async function getDocumentsByUserId(userId: string) {
+  // For Document operations, we'll use Prisma directly for now since Cosmos implementation is not available
+  if (dbType === 'azure') {
+    console.warn('Using Prisma for document operations in Azure environment');
+  }
+  
+  return prisma.document.findMany({
+    where: { userId },
+  });
+}
+
+export async function getDocumentById(documentId: string) {
+  // For Document operations, we'll use Prisma directly for now since Cosmos implementation is not available
+  if (dbType === 'azure') {
+    console.warn('Using Prisma for document operations in Azure environment');
+  }
+  
+  return prisma.document.findUnique({
+    where: { id: documentId },
+  });
+}
+
+export async function updateDocument(documentId: string, documentData: any) {
+  // For Document operations, we'll use Prisma directly for now since Cosmos implementation is not available
+  if (dbType === 'azure') {
+    console.warn('Using Prisma for document operations in Azure environment');
+  }
+  
+  return prisma.document.update({
+    where: { id: documentId },
+    data: documentData,
+  });
+}
+
+export async function deleteDocument(documentId: string) {
+  // For Document operations, we'll use Prisma directly for now since Cosmos implementation is not available
+  if (dbType === 'azure') {
+    console.warn('Using Prisma for document operations in Azure environment');
+  }
+  
+  return prisma.document.delete({
+    where: { id: documentId },
+  });
+}
+
+// Coach matching operations
+export async function createCoachMatch(matchData: any) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.createCoachMatch === 'function') {
+      return cosmosDb.createCoachMatch(matchData);
+    } else {
+      console.warn('createCoachMatch not implemented in cosmosDb module');
+      return matchData;
+    }
+  } else {
+    return prisma.coachMatch.create({
+      data: matchData,
+    });
+  }
+}
+
+export async function getCoachMatchById(matchId: string) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.getCoachMatchById === 'function') {
+      const match = await cosmosDb.getCoachMatchById(matchId);
+      return formatFromCosmosToLocal(match);
+    } else {
+      console.warn('getCoachMatch not implemented in cosmosDb module');
+      return null;
+    }
+  } else {
+    return prisma.coachMatch.findUnique({
+      where: { id: matchId },
+      include: {
+        coach: true,
+        seeker: true,
+        conversation: true,
+      },
+    });
+  }
+}
+
+export async function getCoachMatchesBySeekerId(seekerId: string) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.getCoachMatchesBySeekerId === 'function') {
+      const matches = await cosmosDb.getCoachMatchesBySeekerId(seekerId);
+      return matches.map(formatFromCosmosToLocal);
+    } else {
+      console.warn('getCoachMatchesBySeekerId not implemented in cosmosDb module');
+      return [];
+    }
+  } else {
+    return prisma.coachMatch.findMany({
+      where: { seekerId },
+      include: {
+        coach: true,
+        seeker: true,
+        conversation: true,
+      },
+    });
+  }
+}
+
+export async function getCoachMatchesByCoachId(coachId: string) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.getCoachMatchesByCoachId === 'function') {
+      const matches = await cosmosDb.getCoachMatchesByCoachId(coachId);
+      return matches.map(formatFromCosmosToLocal);
+    } else {
+      console.warn('getCoachMatchesByCoachId not implemented in cosmosDb module');
+      return [];
+    }
+  } else {
+    return prisma.coachMatch.findMany({
+      where: { coachId },
+      include: {
+        coach: true,
+        seeker: true,
+        conversation: true,
+      },
+    });
+  }
+}
+
+export async function updateCoachMatch(matchId: string, matchData: any) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.updateCoachMatch === 'function') {
+      return cosmosDb.updateCoachMatch(matchId, matchData);
+    } else {
+      console.warn('updateCoachMatch not implemented in cosmosDb module');
+      return matchData;
+    }
+  } else {
+    return prisma.coachMatch.update({
+      where: { id: matchId },
+      data: matchData,
+    });
+  }
+}
+
+// Conversation operations
+export async function createConversation(conversationData: any) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.createConversation === 'function') {
+      return cosmosDb.createConversation(conversationData);
+    } else {
+      console.warn('createConversation not implemented in cosmosDb module');
+      return conversationData;
+    }
+  } else {
+    return prisma.conversation.create({
+      data: conversationData,
+    });
+  }
+}
+
+export async function getConversationsByUserId(userId: string) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.getConversationsByUserId === 'function') {
+      const conversations = await cosmosDb.getConversationsByUserId(userId);
+      return conversations.map(formatFromCosmosToLocal);
+    } else {
+      console.warn('getConversationsByUserId not implemented in cosmosDb module');
+      return [];
+    }
+  } else {
+    return prisma.conversation.findMany({
+      where: {
+        OR: [
+          { seekerId: userId },
+          { coachId: userId },
+        ],
+      },
+      include: {
+        coach: true,
+        seeker: true,
+        messages: true,
+        match: true,
+      },
+    });
+  }
+}
+
+export async function createMessage(messageData: any) {
+  if (dbType === 'azure') {
+    if (typeof cosmosDb.createMessage === 'function') {
+      return cosmosDb.createMessage(messageData);
+    } else {
+      console.warn('createMessage not implemented in cosmosDb module');
+      return messageData;
+    }
+  } else {
+    return prisma.message.create({
+      data: messageData,
     });
   }
 }

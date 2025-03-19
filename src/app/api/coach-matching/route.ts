@@ -1,113 +1,150 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { getAssessmentByUserId, getCoaches } from "@/lib/azure/cosmos";
-import { generateChatCompletion } from "@/lib/azure/openai";
+import {
+  getAssessmentByUserId,
+  getCoaches,
+  getUserById,
+  createCoachMatch,
+  getCoachMatchesBySeekerId,
+  getCoachMatchesByCoachId,
+  updateCoachMatch,
+  createConversation,
+  createMessage
+} from "@/lib/database";
+import { generateCoachMatches } from "@/lib/azure/openai";
 
+// Get matches for the authenticated user (both seeker and coach views)
 export async function GET(request: NextRequest) {
   try {
-    // Get the authenticated user
     const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    
-    // Get user ID from session
-    const userId = session.user.id;
-    
-    // Get user's assessment
-    const assessment = await getAssessmentByUserId(userId);
-    
-    if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found. Please complete your assessment first." },
-        { status: 404 }
-      );
+
+    const user = await getUserById(session.user.id);
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    
-    // Get all coaches
-    const coaches = await getCoaches();
-    
-    if (!coaches || coaches.length === 0) {
-      return NextResponse.json(
-        { error: "No coaches available" },
-        { status: 404 }
+
+    // Get matches based on user role
+    const matches = user.isCoach
+      ? await getCoachMatchesByCoachId(user.id)
+      : await getCoachMatchesBySeekerId(user.id);
+
+    // If seeker and no matches exist, generate recommendations
+    if (!user.isCoach && (!matches || matches.length === 0)) {
+      const assessment = await getAssessmentByUserId(user.id);
+      if (!assessment) {
+        return NextResponse.json(
+          { error: "Assessment required for matching" },
+          { status: 400 }
+        );
+      }
+
+      const coaches = await getCoaches();
+      if (!coaches?.length) {
+        return NextResponse.json({ error: "No coaches available" }, { status: 404 });
+      }
+
+      // Generate AI matches
+      const aiMatches = await generateCoachMatches(
+        {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          bio: user.bio,
+          assessments: [assessment]
+        },
+        coaches.map(coach => ({
+          id: coach.id,
+          name: coach.name,
+          expertise: coach.expertise || [],
+          specialties: coach.specialties || [],
+          bio: coach.bio,
+          yearsExperience: coach.yearsExperience,
+          industries: coach.industries || [],
+          coachingStyle: coach.coachingStyle
+        }))
       );
+
+      // Create match records for recommendations
+      const newMatches = await Promise.all(
+        aiMatches.map(match =>
+          createCoachMatch({
+            coachId: match.coachId,
+            seekerId: user.id,
+            status: "pending",
+            matchScore: match.matchScore,
+            matchReason: match.matchReason
+          })
+        )
+      );
+
+      return NextResponse.json({ matches: newMatches });
     }
-    
-    // Use AI to match coaches based on assessment
-    const matchedCoaches = await matchCoachesToAssessment(assessment, coaches);
-    
-    return NextResponse.json({ matches: matchedCoaches });
+
+    return NextResponse.json({ matches });
   } catch (error) {
-    console.error("Error matching coaches:", error);
+    console.error("Error in coach matching:", error);
     return NextResponse.json(
-      { error: "Failed to match coaches" },
+      { error: "Failed to process coach matches" },
       { status: 500 }
     );
   }
 }
 
-/**
- * Match coaches to a user's assessment using AI
- * @param assessment The user's assessment
- * @param coaches List of available coaches
- * @returns Matched coaches with compatibility scores
- */
-async function matchCoachesToAssessment(assessment: any, coaches: any[]) {
+// Handle match actions (accept/decline) and create conversations
+export async function POST(request: NextRequest) {
   try {
-    // Prepare the prompt for AI matching
-    const systemPrompt = `
-      You are an expert job coach matching system. Your task is to match job seekers with coaches
-      based on their assessment and the coaches' profiles. Consider the following factors:
-      
-      1. Communication styles compatibility
-      2. Teaching styles that match the seeker's learning preferences
-      3. Coach's expertise in areas the seeker needs assistance with
-      4. Coach's experience with the seeker's specific disabilities
-      
-      Analyze the seeker's assessment and the available coaches, then return a JSON array of matches.
-      Each match should include the coach's ID, a compatibility score (0-100), and a brief explanation
-      of why they are a good match.
-    `;
-    
-    const userPrompt = `
-      Seeker Assessment:
-      ${JSON.stringify(assessment, null, 2)}
-      
-      Available Coaches:
-      ${JSON.stringify(coaches, null, 2)}
-    `;
-    
-    const messages = [
-      { role: "system" as const, content: systemPrompt },
-      { role: "user" as const, content: userPrompt },
-    ];
-    
-    const response = await generateChatCompletion(messages, 2000, 0.3);
-    
-    // Parse the JSON response
-    try {
-      const matches = JSON.parse(response);
-      
-      // Sort matches by compatibility score (highest first)
-      return matches.sort((a: any, b: any) => b.compatibilityScore - a.compatibilityScore);
-    } catch (parseError) {
-      console.error("Error parsing coach matches:", parseError);
-      
-      // Fallback to basic matching if AI fails
-      return coaches.map((coach) => ({
-        coachId: coach.id,
-        compatibilityScore: 50, // Default score
-        explanation: "Basic match based on availability",
-      }));
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+
+    const body = await request.json();
+    const { matchId, action } = body;
+
+    if (!matchId || !action) {
+      return NextResponse.json(
+        { error: "Match ID and action required" },
+        { status: 400 }
+      );
+    }
+
+    // Update match status
+    const updatedMatch = await updateCoachMatch(matchId, {
+      status: action === "accept" ? "matched" : "declined",
+    });
+
+    // If both parties accept, create a conversation
+    if (action === "accept") {
+      const conversation = await createConversation({
+        coachId: updatedMatch.coachId,
+        seekerId: updatedMatch.seekerId,
+        matchId: matchId,
+        status: "active"
+      });
+
+      // Add initial system message
+      await createMessage({
+        conversationId: conversation.id,
+        senderId: "system",
+        content: "Conversation started! You can now discuss your coaching journey."
+      });
+
+      return NextResponse.json({
+        match: updatedMatch,
+        conversation
+      });
+    }
+
+    return NextResponse.json({ match: updatedMatch });
   } catch (error) {
-    console.error("Error in AI coach matching:", error);
-    throw error;
+    console.error("Error processing match action:", error);
+    return NextResponse.json(
+      { error: "Failed to process match action" },
+      { status: 500 }
+    );
   }
-} 
+}

@@ -45,22 +45,16 @@ export function Header() {
             >
               Coaches
             </Link>
-            <Link
-              href="/resources"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === "/resources" ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              Resources
-            </Link>
-            <Link
-              href="/assessment"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === "/assessment" ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              Assessment
-            </Link>
+            {isAuthenticated && (
+              <Link
+                href="/dashboard"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  pathname === "/dashboard" ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                Dashboard
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-2">
@@ -88,21 +82,11 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{session?.user?.name || "Account"}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/resumes">Resumes</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/applications">Applications</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
                   Sign Out
                 </DropdownMenuItem>

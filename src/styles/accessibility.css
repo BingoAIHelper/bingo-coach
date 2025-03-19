@@ -186,45 +186,63 @@
   box-shadow: 0 0 0 3px rgba(255, 255, 0, 0.4) !important;
 }
 
-/* Color Blind Modes */
+/* Color Blind Modes with WCAG 2.1 compliant contrast ratios */
 :root.protanopia {
-  --primary: #0000ff;
+  --primary: #0066cc;
   --primary-foreground: #ffffff;
-  --accent: #0000ff;
-  --accent-foreground: #ffffff;
-  --destructive: #0000ff;
+  --accent: #00aaff;
+  --accent-foreground: #000000;
+  --destructive: #cc0000;
   --destructive-foreground: #ffffff;
-  --ring: #0000ff;
+  --ring: #0066cc;
+  --border: #0066cc;
+  --focus-ring: 0 0 0 3px rgba(0, 102, 204, 0.5);
 }
 
 :root.deuteranopia {
-  --primary: #0000ff;
+  --primary: #9933cc;
   --primary-foreground: #ffffff;
-  --accent: #0000ff;
-  --accent-foreground: #ffffff;
-  --destructive: #0000ff;
+  --accent: #cc99ff;
+  --accent-foreground: #000000;
+  --destructive: #cc3300;
   --destructive-foreground: #ffffff;
-  --ring: #0000ff;
+  --ring: #9933cc;
+  --border: #9933cc;
+  --focus-ring: 0 0 0 3px rgba(153, 51, 204, 0.5);
 }
 
 :root.tritanopia {
-  --primary: #ff0000;
+  --primary: #cc6600;
   --primary-foreground: #ffffff;
-  --accent: #ff0000;
-  --accent-foreground: #ffffff;
-  --destructive: #ff0000;
+  --accent: #ffcc00;
+  --accent-foreground: #000000;
+  --destructive: #cc0000;
   --destructive-foreground: #ffffff;
-  --ring: #ff0000;
+  --ring: #cc6600;
+  --border: #cc6600;
+  --focus-ring: 0 0 0 3px rgba(204, 102, 0, 0.5);
 }
 
 :root.achromatopsia {
-  --primary: #808080;
+  --primary: #595959;
   --primary-foreground: #ffffff;
-  --secondary: #505050;
+  --secondary: #404040;
   --secondary-foreground: #ffffff;
-  --accent: #606060;
+  --accent: #737373;
   --accent-foreground: #ffffff;
-  --destructive: #303030;
+  --destructive: #262626;
   --destructive-foreground: #ffffff;
-  --ring: #808080;
-} 
+  --ring: #595959;
+  --border: #595959;
+  --focus-ring: 0 0 0 3px rgba(89, 89, 89, 0.5);
+}
+
+/* Color blind mode focus indicators */
+:root[class*="protanopia"] :focus,
+:root[class*="deuteranopia"] :focus,
+:root[class*="tritanopia"] :focus,
+:root[class*="achromatopsia"] :focus {
+  outline: 3px solid var(--ring) !important;
+  outline-offset: 3px !important;
+  box-shadow: var(--focus-ring) !important;
+}

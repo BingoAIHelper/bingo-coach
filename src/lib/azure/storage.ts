@@ -18,19 +18,51 @@ const containerClient = blobServiceClient.getContainerClient(containerName);
  */
 export async function uploadFile(file: Buffer, fileName: string): Promise<string> {
   try {
-    // Create a unique name for the blob
-    const blobName = `${Date.now()}-${fileName}`;
+    console.log(`Uploading file with name: ${fileName}`);
+    console.log(`Using container: ${containerName}`);
+    console.log(`Connection string is set: ${connectionString ? 'Yes' : 'No'}`);
+
+    // Create the container if it doesn't exist
+    try {
+      console.log(`Checking if container ${containerName} exists...`);
+      await containerClient.createIfNotExists();
+      console.log(`Container ${containerName} is ready`);
+    } catch (containerError) {
+      console.error("Error creating container:", containerError);
+      // Continue even if container creation fails, it might already exist
+    }
+    
+    // Use the fileName directly as the blob name instead of creating a new one
+    const blobName = fileName;
+    console.log(`Using blob name: ${blobName}`);
     
     // Get a block blob client
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
     
     // Upload data to the blob
+    console.log(`Uploading file of size: ${file.length} bytes`);
     await blockBlobClient.upload(file, file.length);
     
-    // Return the URL to the blob
-    return blockBlobClient.url;
+    // Generate a SAS token with read permissions that lasts 24 hours
+    const expiresOn = new Date();
+    expiresOn.setHours(expiresOn.getHours() + 24);
+    
+    const sasPermissions = new BlobSASPermissions();
+    sasPermissions.read = true;
+    
+    console.log("Generating SAS URL for Form Recognizer to access the blob");
+    const sasUrl = await blockBlobClient.generateSasUrl({
+      permissions: sasPermissions,
+      expiresOn
+    });
+    
+    console.log(`Generated SAS URL: ${sasUrl}`);
+    
+    // Return the SAS URL instead of the regular URL
+    return sasUrl;
   } catch (error) {
     console.error("Error uploading file:", error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
     throw error;
   }
 }
@@ -68,18 +100,73 @@ export async function uploadResume(file: Buffer, userId: string, fileName: strin
  */
 export async function deleteFile(blobUrl: string): Promise<void> {
   try {
-    // Extract the blob name from the URL
-    const url = new URL(blobUrl);
-    const blobName = url.pathname.substring(containerName.length + 2); // +2 for the leading slash and trailing slash
+    console.log(`Attempting to delete blob at URL: ${blobUrl}`);
     
-    // Get a block blob client
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-    
-    // Delete the blob
-    await blockBlobClient.delete();
+    // For SAS URLs, we need to handle them differently
+    if (blobUrl.includes('?')) {
+      // This is likely a SAS URL, so extract the blob path before the query params
+      const urlWithoutParams = blobUrl.split('?')[0];
+      console.log(`Extracted URL without SAS params: ${urlWithoutParams}`);
+      
+      const url = new URL(urlWithoutParams);
+      
+      // Extract just the blob path portion
+      const pathParts = url.pathname.split('/');
+      const containerPart = pathParts[1]; // First segment after domain should be container
+      
+      // The blob path is everything after the container name
+      const blobPath = pathParts.slice(2).join('/');
+      console.log(`Extracted container: ${containerPart}, blob path: ${blobPath}`);
+      
+      // Get a block blob client
+      const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+      console.log(`Deleting blob at path: ${blobPath}`);
+      
+      // Check if blob exists before deleting
+      const exists = await blockBlobClient.exists();
+      if (!exists) {
+        console.log(`Blob does not exist at path: ${blobPath}`);
+        return; // Skip deletion if blob doesn't exist
+      }
+      
+      // Delete the blob
+      await blockBlobClient.delete();
+      console.log(`Successfully deleted blob at path: ${blobPath}`);
+    } else {
+      // This is a regular URL, handle as before
+      const url = new URL(blobUrl);
+      
+      // Extract the blob name - need to handle various formats
+      let blobName;
+      if (url.pathname.includes(containerName)) {
+        // If the container name is in the path, extract everything after it
+        const containerIndex = url.pathname.indexOf(containerName);
+        blobName = url.pathname.substring(containerIndex + containerName.length + 1);
+      } else {
+        // Otherwise just use the path directly
+        blobName = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+      }
+      
+      console.log(`Extracted blob name for deletion: ${blobName}`);
+      
+      // Get a block blob client
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+      
+      // Check if blob exists before deleting
+      const exists = await blockBlobClient.exists();
+      if (!exists) {
+        console.log(`Blob does not exist at path: ${blobName}`);
+        return; // Skip deletion if blob doesn't exist
+      }
+      
+      // Delete the blob
+      await blockBlobClient.delete();
+      console.log(`Successfully deleted blob at path: ${blobName}`);
+    }
   } catch (error) {
     console.error("Error deleting file:", error);
-    throw error;
+    // Log the error but don't throw, so the document can still be deleted from the database
+    console.error("Delete operation will continue for database record");
   }
 }
 

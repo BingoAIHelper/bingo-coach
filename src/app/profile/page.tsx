@@ -255,149 +255,188 @@ export default function ProfilePage() {
           </div>
           
           <div className="flex flex-col md:flex-row gap-8">
-            <div className="md:w-64 space-y-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary" 
-                          style={{ width: `${userData.profileComplete}%` }}
-                        ></div>
-                      </div>
+            <div className="md:w-72 space-y-6">
+              <div className="profile-sidebar">
+                <div className="space-y-6">
+                  {/* Profile Completion */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium">Profile Completion</h3>
                       <span className="text-sm font-medium">{userData.profileComplete}%</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Profile completion</p>
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 rounded-full ${
+                          userData.profileComplete >= 80 ? 'bg-green-500' :
+                          userData.profileComplete >= 50 ? 'bg-blue-500' :
+                          'bg-amber-500'
+                        }`}
+                        style={{ width: `${userData.profileComplete}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">Complete your profile to improve job matches</p>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <div className="space-y-1">
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#personal-info">
-                    <User className="h-4 w-4 mr-2" />
-                    Personal Information
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#accessibility">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Accessibility
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#experience">
-                    <Briefcase className="h-4 w-4 mr-2" />
-                    Experience
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#resumes">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Resumes
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#calendar">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Calendar
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#notifications">
-                    <Bell className="h-4 w-4 mr-2" />
-                    Notifications
-                  </a>
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" asChild>
-                  <a href="#privacy">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Privacy
-                  </a>
-                </Button>
+
+                  {/* Navigation */}
+                  <div className="space-y-1">
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#personal-info">
+                        <User className="h-4 w-4 mr-3" />
+                        Personal Information
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#accessibility">
+                        <Settings className="h-4 w-4 mr-3" />
+                        Accessibility
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#experience">
+                        <Briefcase className="h-4 w-4 mr-3" />
+                        Experience
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#resumes">
+                        <FileText className="h-4 w-4 mr-3" />
+                        Resumes
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#calendar">
+                        <Calendar className="h-4 w-4 mr-3" />
+                        Calendar
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#notifications">
+                        <Bell className="h-4 w-4 mr-3" />
+                        Notifications
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-start hover:bg-primary/10 hover:text-primary transition-colors" asChild>
+                      <a href="#privacy">
+                        <Shield className="h-4 w-4 mr-3" />
+                        Privacy
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Sign Out Button */}
+                <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
+                    onClick={() => signOut()}
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Sign Out
+                  </Button>
+                </div>
               </div>
-              
-              <Button variant="outline" className="w-full" onClick={() => signOut()}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
             </div>
             
             <div className="flex-1 space-y-8">
-              <Card id="personal-info">
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>
-                    Update your personal details and contact information.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        value={userData.firstName}
-                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      />
+              <div id="personal-info" className="card-gradient rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <User className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={userData.lastName}
-                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={userData.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input 
-                        id="phone" 
-                        type="tel" 
-                        value={userData.phone}
-                        onChange={(e) => handleInputChange("phone", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input 
-                        id="location" 
-                        value={userData.location}
-                        onChange={(e) => handleInputChange("location", e.target.value)}
-                      />
+                    <div>
+                      <h3 className="font-semibold text-lg">Personal Information</h3>
+                      <p className="text-sm text-muted-foreground">Update your personal details and contact information</p>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea 
-                      id="bio" 
-                      rows={4}
-                      value={userData.bio}
-                      onChange={(e) => handleInputChange("bio", e.target.value)}
-                      placeholder="Tell us about yourself, your career goals, and what you're looking for in a job."
-                    />
+                </div>
+
+                <div className="p-6">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                        <Input
+                          id="firstName"
+                          value={userData.firstName}
+                          onChange={(e) => handleInputChange("firstName", e.target.value)}
+                          className="mt-2"
+                          placeholder="Enter your first name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          value={userData.lastName}
+                          onChange={(e) => handleInputChange("lastName", e.target.value)}
+                          className="mt-2"
+                          placeholder="Enter your last name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={userData.email}
+                          onChange={(e) => handleInputChange("email", e.target.value)}
+                          className="mt-2"
+                          placeholder="your.email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          value={userData.phone}
+                          onChange={(e) => handleInputChange("phone", e.target.value)}
+                          className="mt-2"
+                          placeholder="+1 (555) 000-0000"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="location" className="text-sm font-medium">Location</Label>
+                        <Input
+                          id="location"
+                          value={userData.location}
+                          onChange={(e) => handleInputChange("location", e.target.value)}
+                          className="mt-2"
+                          placeholder="City, State, Country"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="bio" className="text-sm font-medium">Professional Bio</Label>
+                        <Textarea
+                          id="bio"
+                          rows={4}
+                          value={userData.bio}
+                          onChange={(e) => handleInputChange("bio", e.target.value)}
+                          className="mt-2 resize-none"
+                          placeholder="Tell us about yourself, your career goals, and what you're looking for in a job."
+                        />
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    onClick={handleSaveProfile}
-                    disabled={loading}
-                  >
-                    {loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </CardFooter>
-              </Card>
+                </div>
+
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      Last updated: {new Date().toLocaleDateString()}
+                    </p>
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={loading}
+                      className="min-w-[120px]"
+                    >
+                      {loading ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
               
               <Card id="accessibility">
                 <CardHeader>

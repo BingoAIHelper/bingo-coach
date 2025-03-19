@@ -12,6 +12,9 @@ const COACHES_CONTAINER = "coaches";
 const RESUMES_CONTAINER = "resumes";
 const ASSESSMENTS_CONTAINER = "assessments";
 const APPLICATIONS_CONTAINER = "applications";
+const COACH_MATCHES_CONTAINER = "coach-matches";
+const CONVERSATIONS_CONTAINER = "conversations";
+const MESSAGES_CONTAINER = "messages";
 
 // Initialize the Cosmos client
 const client = new CosmosClient({ endpoint, key });
@@ -26,6 +29,9 @@ const coachesContainer = database.container(COACHES_CONTAINER);
 const resumesContainer = database.container(RESUMES_CONTAINER);
 const assessmentsContainer = database.container(ASSESSMENTS_CONTAINER);
 const applicationsContainer = database.container(APPLICATIONS_CONTAINER);
+const coachMatchesContainer = database.container(COACH_MATCHES_CONTAINER);
+const conversationsContainer = database.container(CONVERSATIONS_CONTAINER);
+const messagesContainer = database.container(MESSAGES_CONTAINER);
 
 // User operations
 export async function createUser(userData: any) {
@@ -202,6 +208,16 @@ export async function getAssessmentByUserId(userId: string) {
   }
 }
 
+export async function getAssessmentById(assessmentId: string) {
+  try {
+    const { resource: assessment } = await assessmentsContainer.item(assessmentId, assessmentId).read();
+    return assessment;
+  } catch (error) {
+    console.error(`Error getting assessment with ID ${assessmentId}:`, error);
+    return null;
+  }
+}
+
 // Application operations
 export async function createApplication(applicationData: any) {
   try {
@@ -281,4 +297,209 @@ export async function updateResume(id: string, resumeData: any) {
 export async function deleteResume(id: string) {
   await resumesContainer.item(id, id).delete();
   return { id };
-} 
+}
+
+// Coach update operation
+export async function updateCoach(id: string, coachData: any) {
+  try {
+    const { resource: updatedItem } = await coachesContainer.item(id, id).replace({
+      ...coachData,
+      id,
+      updatedAt: new Date().toISOString()
+    });
+    return updatedItem;
+  } catch (error) {
+    console.error(`Error updating coach with ID ${id}:`, error);
+    throw error;
+  }
+}
+
+// Conversation operations
+export async function getConversationsByUserId(userId: string) {
+  try {
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.seekerId = @userId OR c.coachId = @userId",
+      parameters: [{ name: "@userId", value: userId }]
+    };
+    
+    const { resources: conversations } = await conversationsContainer.items.query(querySpec).fetchAll();
+    
+    // Get messages for each conversation
+    const conversationsWithMessages = await Promise.all(
+      conversations.map(async (conversation) => {
+        const messages = await getMessagesByConversationId(conversation.id);
+        return {
+          ...conversation,
+          messages
+        };
+      })
+    );
+    
+    return conversationsWithMessages;
+  } catch (error) {
+    console.error(`Error getting conversations for user ${userId}:`, error);
+    return [];
+  }
+}
+
+// Coach matching operations
+export async function createCoachMatch(matchData: any) {
+  try {
+    const { resource: createdItem } = await coachMatchesContainer.items.create({
+      ...matchData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    return createdItem;
+  } catch (error) {
+    console.error("Error creating coach match:", error);
+    throw error;
+  }
+}
+
+export async function getCoachMatchById(matchId: string) {
+  try {
+    const { resource: match } = await coachMatchesContainer.item(matchId, matchId).read();
+    if (!match) return null;
+
+    const [coach, conversation] = await Promise.all([
+      getCoachById(match.coachId),
+      getConversationByMatchId(matchId)
+    ]);
+
+    return { ...match, coach, conversation };
+  } catch (error) {
+    console.error(`Error getting coach match with ID ${matchId}:`, error);
+    return null;
+  }
+}
+
+export async function getCoachMatchesBySeekerId(seekerId: string) {
+  try {
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.seekerId = @seekerId",
+      parameters: [{ name: "@seekerId", value: seekerId }]
+    };
+    
+    const { resources: matches } = await coachMatchesContainer.items.query(querySpec).fetchAll();
+    
+    const matchesWithDetails = await Promise.all(
+      matches.map(async (match) => {
+        const [coach, conversation] = await Promise.all([
+          getCoachById(match.coachId),
+          getConversationByMatchId(match.id)
+        ]);
+        return { ...match, coach, conversation };
+      })
+    );
+    
+    return matchesWithDetails;
+  } catch (error) {
+    console.error(`Error getting coach matches for seeker ${seekerId}:`, error);
+    return [];
+  }
+}
+
+export async function getCoachMatchesByCoachId(coachId: string) {
+  try {
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.coachId = @coachId",
+      parameters: [{ name: "@coachId", value: coachId }]
+    };
+    
+    const { resources: matches } = await coachMatchesContainer.items.query(querySpec).fetchAll();
+    
+    const matchesWithDetails = await Promise.all(
+      matches.map(async (match) => {
+        const [seeker, conversation] = await Promise.all([
+          getUserById(match.seekerId),
+          getConversationByMatchId(match.id)
+        ]);
+        return { ...match, seeker, conversation };
+      })
+    );
+    
+    return matchesWithDetails;
+  } catch (error) {
+    console.error(`Error getting coach matches for coach ${coachId}:`, error);
+    return [];
+  }
+}
+
+export async function updateCoachMatch(matchId: string, matchData: any) {
+  try {
+    const { resource: updatedItem } = await coachMatchesContainer.item(matchId, matchId).replace({
+      ...matchData,
+      id: matchId,
+      updatedAt: new Date().toISOString()
+    });
+    return updatedItem;
+  } catch (error) {
+    console.error(`Error updating coach match with ID ${matchId}:`, error);
+    throw error;
+  }
+}
+
+// Conversation operations
+export async function createConversation(conversationData: any) {
+  try {
+    const { resource: createdItem } = await conversationsContainer.items.create({
+      ...conversationData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    return createdItem;
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+    throw error;
+  }
+}
+
+export async function getConversationByMatchId(matchId: string) {
+  try {
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.matchId = @matchId",
+      parameters: [{ name: "@matchId", value: matchId }]
+    };
+    
+    const { resources: conversations } = await conversationsContainer.items.query(querySpec).fetchAll();
+    if (conversations.length === 0) return null;
+
+    const conversation = conversations[0];
+    const messages = await getMessagesByConversationId(conversation.id);
+    
+    return { ...conversation, messages };
+  } catch (error) {
+    console.error(`Error getting conversation for match ${matchId}:`, error);
+    return null;
+  }
+}
+
+// Message operations
+export async function createMessage(messageData: any) {
+  try {
+    const { resource: createdItem } = await messagesContainer.items.create({
+      ...messageData,
+      createdAt: new Date().toISOString()
+    });
+    return createdItem;
+  } catch (error) {
+    console.error("Error creating message:", error);
+    throw error;
+  }
+}
+
+export async function getMessagesByConversationId(conversationId: string) {
+  try {
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.conversationId = @conversationId ORDER BY c.createdAt ASC",
+      parameters: [{ name: "@conversationId", value: conversationId }]
+    };
+    
+    const { resources: messages } = await messagesContainer.items.query(querySpec).fetchAll();
+    return messages;
+  } catch (error) {
+    console.error(`Error getting messages for conversation ${conversationId}:`, error);
+    return [];
+  }
+}

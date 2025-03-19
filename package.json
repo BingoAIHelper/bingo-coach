@@ -67,6 +67,7 @@
     "react-speech-kit": "^3.0.1",
     "react-speech-recognition": "^3.10.0",
     "sonner": "^2.0.1",
+    "swr": "^2.3.3",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2"
@@ -74,16 +75,17 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@prisma/client": "^6.5.0",
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-speech-recognition": "^3.9.6",
+    "autoprefixer": "^10.4.17",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
     "mssql": "^11.0.1",
+    "postcss": "^8.4.35",
     "prisma": "^6.5.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
 }
