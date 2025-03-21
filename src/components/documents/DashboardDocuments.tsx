@@ -1,5 +1,7 @@
 'use client';
 
+import { ResumeBuilder } from './ResumeBuilder';
+
 import { useState, useCallback, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import DocumentUploader from './DocumentUploader';
@@ -94,6 +96,24 @@ export function DashboardDocuments() {
     fetchDocuments();
   }, [fetchDocuments]);
 
+  const [profile, setProfile] = useState<any>({});
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/users/profile');
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile data');
+        }
+        const profileData = await response.json();
+        setProfile(profileData);
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
@@ -111,8 +131,8 @@ export function DashboardDocuments() {
             />
           </div>
         </div>
+        <ResumeBuilder documents={documents} profile={profile} />
       </div>
-
       <div>
         {selectedDoc ? (
           <Card className="h-full">

@@ -1,188 +1,189 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useToast } from "@/components/ui/use-toast"
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+// Import Azure AI services
+// import { useFormRecognizer } from '@/lib/azure/formRecognizer';
+// import { useLanguage } from '@/lib/azure/language';
+// import { useOpenAI } from '@/lib/azure/openai';
 
-const RESUME_STYLES = [
-  { id: "professional", name: "Professional" },
-  { id: "modern", name: "Modern" },
-  { id: "creative", name: "Creative" },
-  { id: "minimal", name: "Minimal" },
-];
+interface ResumeBuilderProps {
+  documents: {
+    id: string;
+    title: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
+    analyzeStatus: string;
+    analyzeResults: string | null;
+    analyzeError: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+  profile: any;
+}
 
-const CHAT_QUESTIONS = [
-  "What are your key professional achievements?",
-  "What technical skills do you possess?",
-  "What is your educational background?",
-  "What are your career objectives?",
-  "Do you have any certifications or special training?",
-];
+export function ResumeBuilder({ documents, profile }: ResumeBuilderProps) {
+  const [messages, setMessages] = useState<string[]>([]);
+  const [input, setInput] = useState('');
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [consent, setConsent] = useState(false)
 
-export default function ResumeBuilder() {
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [currentAnswer, setCurrentAnswer] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [existingDocs, setExistingDocs] = useState<any[]>([]);
-  const [hasPermission, setHasPermission] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    // Load existing documents if permission granted
-    if (hasPermission) {
-      fetchExistingDocuments();
-    }
-  }, [hasPermission]);
-
-  const fetchExistingDocuments = async () => {
-    try {
-      const response = await fetch("/api/documents");
-      const data = await response.json();
-      setExistingDocs(data.documents || []);
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch existing documents",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handlePermissionGrant = async () => {
-    setHasPermission(true);
-  };
-
-  const handleAnswerSubmit = () => {
-    if (currentAnswer.trim()) {
-      setAnswers({
-        ...answers,
-        [CHAT_QUESTIONS[step]]: currentAnswer.trim(),
-      });
-      setCurrentAnswer("");
-      if (step < CHAT_QUESTIONS.length - 1) {
-        setStep(step + 1);
-      }
-    }
-  };
+  // const formRecognizer = useFormRecognizer();
+  // const language = useLanguage();
+  // const openai = useOpenAI();
 
   const handleGenerateResume = async () => {
-    setIsGenerating(true);
-    try {
-      const response = await fetch("/api/resumes/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          answers,
-          style: selectedStyle,
-          existingDocuments: hasPermission ? existingDocs : [],
-        }),
-      });
+    setOpen(true);
+  };
 
-      if (!response.ok) {
-        throw new Error("Failed to generate resume");
+  useEffect(() => {
+    const generateResume = async () => {
+      if (consent) {
+        // TODO: Implement Azure AI interaction here
+        // 1. Get user data (documents, profile, etc.)
+        const userData = await getUserData();
+
+        // 2. Send data to AI model to construct a "temporary resume."
+        const temporaryResume = await generateTemporaryResume(userData);
+
+        // 3. Analyze the temporary resume against quality criteria.
+        const analysisResults = await analyzeResume(temporaryResume);
+
+        if (analysisResults.meetsCriteria) {
+          // 4. Present the finalized resume.
+          toast({
+            title: "Resume Generated!",
+            description: "Your resume has been generated successfully.",
+          });
+        } else {
+          // 5. Initiate an interactive dialogue with the user if the resume doesn't meet the criteria.
+          // TODO: Implement interactive dialogue
+          //startInteractiveDialogue(analysisResults);
+          //startInteractiveDialogue(analysisResults);
+          toast({
+            title: "Resume Needs Improvement",
+            description: "Your resume needs some improvement. Please provide more information.",
+          });
+        }
       }
+    };
+    generateResume();
+  }, [consent, toast]);
 
-      const data = await response.json();
-      
-      toast({
-        title: "Success",
-        description: "Resume generated successfully",
-      });
-
-      // Reset the form
-      setStep(0);
-      setAnswers({});
-      setCurrentAnswer("");
-      setSelectedStyle("");
+  const getUserData = async () => {
+    // TODO: Implement logic to get user data (documents, profile, etc.)
+    try {
+      const profileResponse = await fetch('/api/users/profile');
+      if (!profileResponse.ok) {
+        throw new Error('Failed to fetch profile data');
+      }
+      const profileData = await profileResponse.json();
+      return {
+        documents: documents,
+        profile: profileData,
+      };
     } catch (error) {
-      console.error("Error generating resume:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate resume",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
+      console.error('Error fetching profile data:', error);
+      return {
+        documents: documents,
+        profile: profile,
+      };
     }
   };
 
-  const isComplete = step === CHAT_QUESTIONS.length - 1 && 
-                    Object.keys(answers).length === CHAT_QUESTIONS.length &&
-                    selectedStyle;
+  const generateTemporaryResume = async (userData: any) => {
+    // TODO: Implement logic to send data to AI model and construct a temporary resume.
+    // 1. Use Azure OpenAI to generate a resume based on user data
+    // const openaiResponse = await openai.generateResume(userData);
+    // 2. Return the generated resume
+    return "This is a temporary resume.";
+  };
 
-  if (!hasPermission) {
-    return (
-      <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-4">Resume Builder</h2>
-        <p className="mb-4">
-          Would you like to use your existing documents to help create your resume?
-          This will help us generate a more personalized resume.
-        </p>
-        <div className="flex gap-4">
-          <Button onClick={handlePermissionGrant}>Yes, use my documents</Button>
-          <Button variant="outline" onClick={() => setHasPermission(false)}>
-            No, start fresh
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+  const analyzeResume = async (resume: string) => {
+    // TODO: Implement logic to analyze the temporary resume against quality criteria.
+    // 1. Use Azure Language to analyze the resume
+    // const analysisResults = await language.analyzeResume(resume);
+    // 2. Return the analysis results
+    return {
+      meetsCriteria: true,
+    };
+  };
+
+  const startInteractiveDialogue = async (analysisResults: any) => {
+    // TODO: Implement interactive dialogue with the user
+    // 1. Display a series of prompts to the user based on the analysis results
+    // 2. Gather the missing information from the user
+    // 3. Update the messages state with the prompts and user responses
+  };
+
+  const handleSend = async () => {
+    if (input.trim() !== '') {
+      setMessages([...messages, `User: ${input}`]);
+      // TODO: Implement Azure AI interaction here
+      // 1. Extract information from user input using Azure Language
+      // const extractedInfo = await language.extract(input);
+
+      // 2. Use OpenAI to generate a response based on the extracted information
+      // const aiResponse = await openai.generateResponse(extractedInfo);
+
+      // 3. Update the messages state with the AI response
+      setMessages(prevMessages => [...prevMessages, `AI: (Response from Azure AI)`]);
+      setInput('');
+    }
+  };
 
   return (
-    <Card className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Resume Builder</h2>
-      
-      {step < CHAT_QUESTIONS.length ? (
-        <div className="space-y-4">
-          <p className="font-medium">{CHAT_QUESTIONS[step]}</p>
-          <Textarea
-            value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
-            placeholder="Type your answer here..."
-            className="min-h-[100px]"
-          />
-          <Button onClick={handleAnswerSubmit}>
-            {step === CHAT_QUESTIONS.length - 1 ? "Final Step" : "Next"}
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <p className="font-medium">Choose a resume style:</p>
-          <Select value={selectedStyle} onValueChange={setSelectedStyle}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a style" />
-            </SelectTrigger>
-            <SelectContent>
-              {RESUME_STYLES.map((style) => (
-                <SelectItem key={style.id} value={style.id}>
-                  {style.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button
-            onClick={handleGenerateResume}
-            disabled={!isComplete || isGenerating}
-            className="w-full"
-          >
-            {isGenerating ? "Generating..." : "Generate Resume"}
-          </Button>
-        </div>
-      )}
+    <Card className="space-y-4">
+      <h3 className="text-lg font-medium">AI Resume Builder</h3>
 
-      <div className="mt-4">
-        <p className="text-sm text-gray-500">
-          Step {step + 1} of {CHAT_QUESTIONS.length + 1}
-        </p>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" onClick={handleGenerateResume}>Generate Resume</Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Data Usage Consent</DialogTitle>
+            <DialogDescription>
+              To generate your resume, we will access and utilize data from your uploaded documents and profile.
+              Do you consent to the use of your data for this purpose?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox id="terms" onCheckedChange={(checked) => setConsent(checked === true)} />
+              <label
+                htmlFor="terms"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed data-[state=checked]:text-green-500"
+              >
+                I consent to the use of my data for resume generation.
+              </label>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="space-y-2">
+        {messages.map((message, index) => (
+          <div key={index}>{message}</div>
+        ))}
+      </div>
+      <div className="flex space-x-2">
+        <Input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+        />
+        <Button onClick={handleSend}>Send</Button>
       </div>
     </Card>
   );
