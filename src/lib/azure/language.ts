@@ -35,7 +35,7 @@ interface JobRecommendation {
   reason: string;
 }
 
-interface ResumeAnalysis {
+export interface ResumeAnalysis {
   skills: string[];
   experience: string[];
   education: string[];

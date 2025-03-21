@@ -47,6 +47,7 @@ export default function RootLayout({
               </main>
               <AccessibilityFeatures />
               <Toaster position="bottom-right" />
+              <div id="radix-portal-root" />
             </AccessibilityProvider>
           </ThemeProvider>
         </SessionProvider>

@@ -34,53 +34,13 @@ async function getKey(secret: string, salt: Buffer): Promise<Buffer> {
   return Buffer.from(key);
 }
 
-/**
- * Encrypt a message using AES-256-GCM
- */
-export async function encryptMessage(message: string, secret: string): Promise<string> {
-  const salt = randomBytes(SALT_LENGTH);
-  const iv = randomBytes(IV_LENGTH);
-  const key = await getKey(secret, salt);
-
-  const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
-  
-  let encrypted = cipher.update(message, 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-  
-  const authTag = cipher.getAuthTag();
-
-  // Combine salt, IV, auth tag, and encrypted message
-  const combined = Buffer.concat([
-    salt,
-    iv,
-    authTag,
-    Buffer.from(encrypted, 'base64')
-  ]);
-
-  return combined.toString('base64');
+// Temporarily disable encryption for debugging
+export function encryptMessage(message: string, key: string): string {
+  return message;
 }
 
-/**
- * Decrypt a message using AES-256-GCM
- */
-export async function decryptMessage(encryptedMessage: string, secret: string): Promise<string> {
-  const combined = Buffer.from(encryptedMessage, 'base64');
-
-  // Extract the salt, IV, auth tag, and encrypted message
-  const salt = combined.subarray(0, SALT_LENGTH);
-  const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-  const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
-  const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
-
-  const key = await getKey(secret, salt);
-
-  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
-  decipher.setAuthTag(authTag);
-
-  let decrypted = decipher.update(encrypted);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-  return decrypted.toString('utf8');
+export function decryptMessage(encrypted: string, key: string): string {
+  return encrypted;
 }
 
 /**

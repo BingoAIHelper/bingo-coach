@@ -2,8 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { redirect, useSearchParams } from "next/navigation";
-import { MainLayout } from "@/components/MainLayout";
-import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";

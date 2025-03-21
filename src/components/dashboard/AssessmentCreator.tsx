@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,20 @@ interface SeekerInfo {
   focusArea: string;
 }
 
+interface Seeker {
+  id: string;
+  name: string;
+  assessment?: {
+    title: string;
+    score?: number;
+    feedback?: string;
+  };
+  disabilities: string[];
+  goals: string[];
+  skillLevel: string;
+  focusArea: string;
+}
+
 export default function AssessmentCreator() {
   const [mode, setMode] = useState<"manual" | "ai">("manual");
   const [assessment, setAssessment] = useState<Assessment>({
@@ -56,9 +70,87 @@ export default function AssessmentCreator() {
     focusArea: ""
   });
 
+  const [seekers, setSeekers] = useState<Seeker[]>([]);
+  const [selectedSeeker, setSelectedSeeker] = useState<string>("");
   const [currentSection, setCurrentSection] = useState<number>(-1);
   const [currentQuestion, setCurrentQuestion] = useState<number>(-1);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Fetch matched seekers
+  useEffect(() => {
+    const fetchSeekers = async () => {
+      try {
+        const response = await fetch('/api/coach-matching');
+        if (!response.ok) throw new Error('Failed to fetch seekers');
+        const data = await response.json();
+        
+        console.log('Raw API response:', data); // Debug log
+        
+        // Transform existing matches into seeker objects
+        const matchedSeekers = data.existingMatches
+          .filter((match: any) => match.status === "matched")
+          .map((match: any) => {
+            console.log('Processing match:', match); // Debug log
+            return {
+              id: match.seeker.id,
+              name: match.seeker.name,
+              assessment: match.seeker.assessment,
+              disabilities: match.seeker.disabilities || [],
+              goals: match.seeker.goals || [],
+              skillLevel: match.seeker.skillLevel || "intermediate",
+              focusArea: match.seeker.focusArea || ""
+            };
+          });
+        
+        console.log('Transformed seekers:', matchedSeekers); // Debug log
+        setSeekers(matchedSeekers);
+
+        // If there are seekers, select the first one by default
+        if (matchedSeekers.length > 0) {
+          setSelectedSeeker(matchedSeekers[0].id);
+          // Also update the seeker info for the first seeker
+          setSeekerInfo({
+            name: matchedSeekers[0].name,
+            disabilities: matchedSeekers[0].disabilities,
+            goals: matchedSeekers[0].goals,
+            skillLevel: matchedSeekers[0].skillLevel,
+            focusArea: matchedSeekers[0].focusArea
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching seekers:', error);
+        toast.error('Failed to load seekers');
+      }
+    };
+
+    fetchSeekers();
+  }, []);
+
+  // Update seeker info when a seeker is selected
+  useEffect(() => {
+    if (selectedSeeker) {
+      const seeker = seekers.find(s => s.id === selectedSeeker);
+      if (seeker) {
+        console.log('Selected seeker:', seeker); // Debug log
+        setSeekerInfo({
+          name: seeker.name,
+          disabilities: seeker.disabilities,
+          goals: seeker.goals,
+          skillLevel: seeker.skillLevel,
+          focusArea: seeker.focusArea
+        });
+
+        // If there's an existing assessment, pre-fill the assessment title
+        if (seeker.assessment) {
+          setAssessment(prev => ({
+            ...prev,
+            title: `${seeker.name}'s Assessment`,
+            description: `Assessment for ${seeker.name} based on their goals and skill level`
+          }));
+        }
+      }
+    }
+  }, [selectedSeeker, seekers]);
 
   const handleGenerateAssessment = async () => {
     try {
@@ -153,6 +245,25 @@ export default function AssessmentCreator() {
               <CardTitle>Assessment Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="seeker">Select Seeker</Label>
+                <Select
+                  value={selectedSeeker}
+                  onValueChange={setSelectedSeeker}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a seeker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {seekers.map((seeker) => (
+                      <SelectItem key={seeker.id} value={seeker.id}>
+                        {seeker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
                 <Input
@@ -338,6 +449,25 @@ export default function AssessmentCreator() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="seeker">Select Seeker</Label>
+                <Select
+                  value={selectedSeeker}
+                  onValueChange={setSelectedSeeker}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a seeker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {seekers.map((seeker) => (
+                      <SelectItem key={seeker.id} value={seeker.id}>
+                        {seeker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="seeker-name">Seeker Name</Label>
                 <Input

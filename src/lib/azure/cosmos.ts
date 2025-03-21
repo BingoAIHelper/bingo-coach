@@ -84,6 +84,16 @@ export async function updateUser(userId: string, userData: any) {
   }
 }
 
+export async function queryUsers(querySpec: any) {
+  try {
+    const { resources: users } = await usersContainer.items.query(querySpec).fetchAll();
+    return users;
+  } catch (error) {
+    console.error("Error querying users:", error);
+    return [];
+  }
+}
+
 // Job operations
 export async function createJob(jobData: any) {
   try {

@@ -29,10 +29,10 @@ const defaultSettings: AccessibilitySettings = {
   reducedMotion: false,
   screenReader: false,
   colorBlindMode: "none",
-  textToSpeech: true, // Enabled by default
-  enhancedKeyboardNav: true, // Enabled by default
-  speechRecognition: true, // Enabled by default
-  autoReadContent: true, // Enabled by default
+  textToSpeech: false, // Disabled by default
+  enhancedKeyboardNav: false, // Disabled by default
+  speechRecognition: false, // Disabled by default
+  autoReadContent: false, // Disabled by default
   hasCompletedOnboarding: false,
 };
 

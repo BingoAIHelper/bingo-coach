@@ -2,11 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { MainLayout } from "@/components/MainLayout";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Bell, Briefcase, Award, Calendar, MessageSquare, FileText, CheckCircle } from "lucide-react";
-import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { DashboardDocuments } from "@/components/documents/DashboardDocuments";
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";

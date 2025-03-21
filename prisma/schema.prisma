@@ -8,24 +8,43 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String?
-  firstName    String
-  lastName     String
-  password     String
-  role         String
-  profileImage String?
-  bio          String?
-  location     String?
-  phone        String?
-  isCoach      Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  applications Application[]
-  assessments  Assessment[]
-  resumes      Resume[]
-  documents    Document[]
+  id                  String         @id @default(cuid())
+  name                String
+  firstName           String
+  lastName            String
+  email               String         @unique
+  password            String
+  role                String         @default("seeker")
+  isCoach             Boolean        @default(false)
+  bio                 String?
+  location            String?
+  phone               String?
+  lastActive          DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  experience          String?
+  expertise           String?        @db.Text
+  specialties         String?        @db.Text
+  yearsExperience     Int?
+  industries          String?        @db.Text
+  coachingStyle       String?
+  hourlyRate          Float?
+  availability        String?        @db.Text
+  languages           String?        @db.Text
+  certifications      String?        @db.Text
+  rating              Float?
+  totalReviews        Int            @default(0)
+  applications        Application[]
+  assessments         Assessment[]
+  seekerMatches       CoachMatch[]   @relation("seeker_matches")
+  coach               Coach?
+  seekerConversations Conversation[] @relation("seeker_conversations")
+  documents           Document[]
+  receivedMessages    Message[]      @relation("received_messages")
+  sentMessages        Message[]      @relation("sent_messages")
+  resumes             Resume[]
+
+  @@map("users")
 }
 
 model Job {
@@ -40,20 +59,32 @@ model Job {
   contactPhone String?
   postedDate   DateTime      @default(now())
   applications Application[]
+
+  @@map("jobs")
 }
 
 model Coach {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  bio          String?  @db.Text
-  expertise    String?
-  profileImage String?
-  hourlyRate   Float?
-  rating       Float?
-  availability String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  bio            String?        @db.Text
+  expertise      String?        @db.Text
+  specialties    String?        @db.Text
+  industries     String?        @db.Text
+  languages      String?        @db.Text
+  certifications String?        @db.Text
+  profileImage   String?
+  hourlyRate     Float?
+  rating         Float?
+  availability   String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  userId         String         @unique
+  matches        CoachMatch[]
+  user           User           @relation(fields: [userId], references: [id], onUpdate: NoAction)
+  conversations  Conversation[]
+
+  @@map("coaches")
 }
 
 model Resume {
@@ -65,17 +96,22 @@ model Resume {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
+
+  @@map("resumes")
 }
 
 model Assessment {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
   title     String
   score     Int?
-  feedback  String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  feedback  String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onUpdate: NoAction)
+  messages  Message[]
+
+  @@map("assessments")
 }
 
 model Application {
@@ -90,20 +126,75 @@ model Application {
   updatedAt     DateTime @updatedAt
   job           Job      @relation(fields: [jobId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
+
+  @@map("applications")
 }
 
 model Document {
-  id              String    @id @default(uuid())
-  userId          String
-  title           String
-  fileName        String
-  fileUrl         String
-  fileType        String
-  fileSize        Int
-  analyzeStatus   String    @default("pending") // pending, analyzing, completed, failed
-  analyzeResults  String?   @db.Text
-  analyzeError    String?   @db.Text
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id])
+  id             String    @id @default(uuid())
+  userId         String
+  title          String
+  fileName       String
+  fileUrl        String
+  fileType       String
+  fileSize       Int
+  analyzeStatus  String    @default("pending")
+  analyzeResults String?   @db.Text
+  analyzeError   String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onUpdate: NoAction)
+  messages       Message[]
+
+  @@map("documents")
+}
+
+model CoachMatch {
+  id           String        @id @default(uuid())
+  coachId      String
+  seekerId     String
+  status       String
+  matchScore   Float
+  matchReason  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  coach        Coach         @relation(fields: [coachId], references: [id], onUpdate: NoAction, map: "coach_matches_coach_fkey")
+  seeker       User          @relation("seeker_matches", fields: [seekerId], references: [id], onUpdate: NoAction, map: "coach_matches_seeker_fkey")
+  conversation Conversation?
+
+  @@map("coach_matches")
+}
+
+model Conversation {
+  id        String      @id @default(uuid())
+  coachId   String
+  seekerId  String
+  matchId   String?     @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  coach     Coach       @relation(fields: [coachId], references: [id], onUpdate: NoAction)
+  match     CoachMatch? @relation(fields: [matchId], references: [id], onUpdate: NoAction)
+  seeker    User        @relation("seeker_conversations", fields: [seekerId], references: [id], onUpdate: NoAction)
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  receiverId     String
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+  assessmentId   String?
+  documentId     String?
+  type           String       @default("text")
+  assessment     Assessment?  @relation(fields: [assessmentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "messages_assessment_fkey")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onUpdate: NoAction, map: "messages_conversation_fkey")
+  document       Document?    @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "messages_document_fkey")
+  receiver       User         @relation("received_messages", fields: [receiverId], references: [id], onUpdate: NoAction, map: "messages_receiver_user_fkey")
+  sender         User         @relation("sent_messages", fields: [senderId], references: [id], onUpdate: NoAction, map: "messages_sender_user_fkey")
+
+  @@map("messages")
 }

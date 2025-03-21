@@ -1,8 +1,7 @@
 "use client";
 
 import { useAccessibility } from "@/context/AccessibilityContext";
-import { AccessibilityButton } from "@/components/AccessibilityButton";
-import { AccessibilityOnboarding } from "@/components/AccessibilityOnboarding";
+import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 import { SkipToContent } from "@/components/SkipToContent";
 import { FocusManager } from "@/components/FocusManager";
 import { TextToSpeechController } from "@/components/TextToSpeechController";
@@ -15,11 +14,8 @@ export function AccessibilityFeatures() {
   
   return (
     <>
-      {/* Always include the onboarding component */}
-      <AccessibilityOnboarding />
-      
-      {/* Always include the accessibility button */}
-      <AccessibilityButton />
+      {/* Always include the accessibility widget */}
+      <AccessibilityWidget />
       
       {/* Skip to content link - only visible on keyboard focus */}
       <SkipToContent />

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { getCoachMatchById } from "@/lib/database";
+import { getConversationById } from "@/lib/database";
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
       );
     }
 
-    const conversation = await getCoachMatchById(params.id);
+    const conversation = await getConversationById(params.id);
     if (!conversation) {
       return NextResponse.json(
         { error: "Conversation not found" },
@@ -26,8 +26,8 @@ export async function GET(
 
     // Verify user has access to this conversation
     if (
-      conversation.coachId !== session.user.id &&
-      conversation.seekerId !== session.user.id
+      conversation.coach.userId !== session.user.id &&
+      conversation.seeker.id !== session.user.id
     ) {
       return NextResponse.json(
         { error: "Access denied" },

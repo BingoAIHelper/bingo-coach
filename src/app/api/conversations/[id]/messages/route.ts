@@ -1,51 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../../auth/[...nextauth]/route";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
   getCoachMatchById,
   createMessage,
   getDocumentById,
   getAssessmentById,
+  getConversationById,
+  getMessagesByConversationId,
 } from "@/lib/database";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
+      return new NextResponse(
+        JSON.stringify({ error: "Not authenticated" }),
         { status: 401 }
       );
     }
 
-    // Get the match to verify permissions
-    const match = await getCoachMatchById(params.id);
-    if (!match) {
-      return NextResponse.json(
-        { error: "Conversation not found" },
+    // Ensure we have the conversation ID
+    const { id: conversationId } = context.params;
+    if (!conversationId) {
+      return new NextResponse(
+        JSON.stringify({ error: "Conversation ID is required" }),
+        { status: 400 }
+      );
+    }
+
+    // Get the conversation to verify permissions
+    const conversation = await getConversationById(conversationId);
+    if (!conversation) {
+      return new NextResponse(
+        JSON.stringify({ error: "Conversation not found" }),
         { status: 404 }
       );
     }
 
-    // Verify user has access to this conversation
-    if (match.coachId !== session.user.id && match.seekerId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Access denied" },
+    // Verify the user has access to this conversation
+    if (conversation.coach.userId !== session.user.id && conversation.seekerId !== session.user.id) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 403 }
       );
     }
 
-    // Return messages with conversation
-    return NextResponse.json({
-      messages: match.conversation?.messages || []
-    });
+    // Get messages
+    const messages = await getMessagesByConversationId(conversationId);
+
+    return new NextResponse(
+      JSON.stringify({ messages: messages || [] }),
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error fetching messages:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch messages" },
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error", messages: [] }),
       { status: 500 }
     );
   }
@@ -53,7 +68,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -64,9 +79,17 @@ export async function POST(
       );
     }
 
-    // Get the match to verify permissions
-    const match = await getCoachMatchById(params.id);
-    if (!match) {
+    const { id: conversationId } = context.params;
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: "Conversation ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get the conversation to verify permissions
+    const conversation = await getConversationById(conversationId);
+    if (!conversation) {
       return NextResponse.json(
         { error: "Conversation not found" },
         { status: 404 }
@@ -74,23 +97,15 @@ export async function POST(
     }
 
     // Verify user has access to this conversation
-    if (match.coachId !== session.user.id && match.seekerId !== session.user.id) {
+    if (conversation.coach.userId !== session.user.id && conversation.seekerId !== session.user.id) {
       return NextResponse.json(
         { error: "Access denied" },
         { status: 403 }
       );
     }
 
-    // Verify match status allows messaging
-    if (match.status !== "matched") {
-      return NextResponse.json(
-        { error: "Cannot send messages until both parties have matched" },
-        { status: 400 }
-      );
-    }
-
     const body = await request.json();
-    const { type, content, documentId, assessmentId } = body;
+    const { type = "text", content, documentId, assessmentId } = body;
 
     // Validate message type
     if (!["text", "document_ref", "assessment_ref"].includes(type)) {
@@ -137,12 +152,12 @@ export async function POST(
 
     // Create the message
     const message = await createMessage({
-      conversationId: match.conversation!.id,
+      conversationId,
       senderId: session.user.id,
       type,
       content: content || "",
       documentId: type === "document_ref" ? documentId : undefined,
-      assessmentId: type === "assessment_ref" ? assessmentId : undefined,
+      assessmentId: type === "assessment_ref" ? assessmentId : undefined
     });
 
     return NextResponse.json(message);

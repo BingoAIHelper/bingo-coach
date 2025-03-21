@@ -1,13 +1,14 @@
 'use client';
 
 import { ResumeBuilder } from './ResumeBuilder';
-
 import { useState, useCallback, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import DocumentUploader from './DocumentUploader';
 import DocumentsList from './DocumentsList';
 import DocumentViewer from './DocumentViewer';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -23,10 +24,21 @@ interface Document {
   updatedAt: string;
 }
 
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  // Add other profile fields as needed
+}
+
 export function DashboardDocuments() {
+  const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocument, setSelectedDocument] = useState<string | undefined>();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Fetch documents on mount
   const fetchDocuments = useCallback(async () => {
@@ -38,10 +50,15 @@ export function DashboardDocuments() {
       setDocuments(data.documents || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch documents. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   // Handle document deletion
   const handleDelete = async (documentId: string) => {
@@ -54,8 +71,17 @@ export function DashboardDocuments() {
       
       // Refresh documents list
       fetchDocuments();
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      });
     } catch (error) {
       console.error('Error deleting document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -92,15 +118,16 @@ export function DashboardDocuments() {
   // Get selected document
   const selectedDoc = documents.find(doc => doc.id === selectedDocument);
 
+  // Fetch documents
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const [profile, setProfile] = useState<any>({});
-
+  // Fetch profile
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        setProfileLoading(true);
         const response = await fetch('/api/users/profile');
         if (!response.ok) {
           throw new Error('Failed to fetch profile data');
@@ -109,10 +136,26 @@ export function DashboardDocuments() {
         setProfile(profileData);
       } catch (error) {
         console.error('Error fetching profile data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load profile data. Some features may be limited.",
+          variant: "destructive"
+        });
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
       }
     };
     fetchProfile();
-  }, []);
+  }, [toast]);
+
+  if (loading || profileLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -131,7 +174,7 @@ export function DashboardDocuments() {
             />
           </div>
         </div>
-        <ResumeBuilder documents={documents} profile={profile} />
+        {profile && <ResumeBuilder documents={documents} profile={profile} />}
       </div>
       <div>
         {selectedDoc ? (

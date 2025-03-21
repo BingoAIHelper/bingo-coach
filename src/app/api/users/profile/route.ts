@@ -3,25 +3,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const userId = req.nextUrl.searchParams.get("userId");
+    const session = await getServerSession(authOptions);
     
-    if (!userId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    if (!session?.user?.id) {
+      return new NextResponse(
+        JSON.stringify({ error: "Not authenticated" }),
+        { status: 401 }
+      );
     }
 
-    const user = await getUserById(userId);
+    const user = await getUserById(session.user.id);
     
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return new NextResponse(
+        JSON.stringify({ error: "User not found" }),
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(user);
+    // Remove sensitive information
+    const { password, ...profile } = user;
+
+    return new NextResponse(
+      JSON.stringify(profile),
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("Error in GET /api/users/profile:", error);
-    return NextResponse.json(
-      { error: "An error occurred while fetching the user profile" },
+    console.error("Error fetching profile:", error);
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500 }
     );
   }

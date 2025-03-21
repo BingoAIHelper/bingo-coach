@@ -1,4 +1,4 @@
-import { MainLayout } from "@/components/MainLayout";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,7 +12,7 @@ export default function HomePage() {
             <div className="flex flex-col justify-center space-y-6">
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl xl:text-7xl">
-                  Bingo Job Coach Platform
+                  Bingo! Job Coach Platform
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-[600px] leading-relaxed">
                   A comprehensive job coaching platform designed for individuals with disabilities.

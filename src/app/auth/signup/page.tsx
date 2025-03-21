@@ -16,6 +16,32 @@ import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 import { AccessibilityOnboarding } from "@/components/AccessibilityOnboarding";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelect } from "@/components/ui/multi-select";
+
+type FormData = {
+  role: "seeker" | "coach";
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  bio: string;
+  location: string;
+  phone: string;
+  agreeToTerms: boolean;
+  // Coach-specific fields
+  expertise: string[];
+  specialties: string[];
+  yearsExperience: number;
+  industries: string[];
+  coachingStyle: string;
+  hourlyRate: number;
+  availability: string[];
+  languages: string[];
+  certifications: string[];
+};
 
 export default function SignUp() {
   const router = useRouter();
@@ -24,7 +50,7 @@ export default function SignUp() {
   const { settings, speakText } = useAccessibility();
   
   // Form data across all steps
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     role: defaultRole as "seeker" | "coach",
     firstName: "",
     lastName: "",
@@ -34,7 +60,17 @@ export default function SignUp() {
     bio: "",
     location: "",
     phone: "",
-    agreeToTerms: false
+    agreeToTerms: false,
+    // Coach-specific fields
+    expertise: [],
+    specialties: [],
+    yearsExperience: 0,
+    industries: [],
+    coachingStyle: "",
+    hourlyRate: 0,
+    availability: [],
+    languages: [],
+    certifications: []
   });
   
   // UI state
@@ -43,8 +79,8 @@ export default function SignUp() {
   const [error, setError] = useState("");
   const totalSteps = 4;
 
-  // Handle form field changes
-  const handleChange = (field: string, value: string | boolean) => {
+  // Handle form field changes with type safety
+  const handleChange = (field: keyof FormData, value: string | boolean | number | string[]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
@@ -120,7 +156,24 @@ export default function SignUp() {
         return true;
       
       case 3:
-        // Profile details - these are optional so always valid
+        if (formData.role === "coach") {
+          if (formData.expertise.length === 0) {
+            setError("Please select at least one area of expertise");
+            return false;
+          }
+          if (!formData.yearsExperience) {
+            setError("Years of experience is required");
+            return false;
+          }
+          if (!formData.coachingStyle) {
+            setError("Please select your coaching style");
+            return false;
+          }
+          if (formData.hourlyRate <= 0) {
+            setError("Please set your hourly rate");
+            return false;
+          }
+        }
         return true;
       
       case 4:
@@ -154,22 +207,37 @@ export default function SignUp() {
     setError("");
 
     try {
+      // Prepare registration data
+      const registrationData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        bio: formData.bio || undefined,
+        location: formData.location || undefined,
+        phone: formData.phone || undefined,
+        // Include coach-specific fields only if registering as a coach
+        ...(formData.role === "coach" ? {
+          expertise: formData.expertise,
+          specialties: formData.specialties,
+          yearsExperience: formData.yearsExperience,
+          industries: formData.industries,
+          coachingStyle: formData.coachingStyle,
+          hourlyRate: formData.hourlyRate,
+          availability: formData.availability,
+          languages: formData.languages,
+          certifications: formData.certifications
+        } : {})
+      };
+
       // Call the registration API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-          bio: formData.bio || undefined,
-          location: formData.location || undefined,
-          phone: formData.phone || undefined
-        }),
+        body: JSON.stringify(registrationData),
       });
 
       const data = await response.json();
@@ -345,19 +413,171 @@ export default function SignUp() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold">Step 3: Profile Details</h2>
                 <p className="text-sm text-muted-foreground">
-                  Tell us more about yourself. These details will help us personalize your experience.
+                  {formData.role === "coach" 
+                    ? "Tell us about your coaching experience and expertise"
+                    : "Tell us more about yourself"}
                 </p>
                 
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
                   <Textarea
                     id="bio"
-                    placeholder="Tell us about yourself, your skills, experience, or what you're looking for..."
+                    placeholder={formData.role === "coach" 
+                      ? "Describe your coaching experience, approach, and what makes you unique..."
+                      : "Tell us about yourself, your skills, experience, or what you're looking for..."}
                     value={formData.bio}
                     onChange={(e) => handleChange("bio", e.target.value)}
                     className="min-h-24"
                   />
                 </div>
+                
+                {formData.role === "coach" && (
+                  <>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="expertise">Areas of Expertise</Label>
+                        <MultiSelect
+                          value={formData.expertise}
+                          onChange={(value) => handleChange("expertise", value)}
+                          options={[
+                            "Career Transition",
+                            "Leadership Development",
+                            "Interview Preparation",
+                            "Resume Writing",
+                            "Networking",
+                            "Personal Branding",
+                            "Salary Negotiation",
+                            "Work-Life Balance",
+                            "Professional Development",
+                            "Executive Coaching"
+                          ]}
+                          placeholder="Select your areas of expertise"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="yearsExperience">Years of Experience</Label>
+                        <Input
+                          id="yearsExperience"
+                          type="number"
+                          min="0"
+                          value={formData.yearsExperience}
+                          onChange={(e) => handleChange("yearsExperience", parseInt(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="industries">Industries</Label>
+                        <MultiSelect
+                          value={formData.industries}
+                          onChange={(value) => handleChange("industries", value)}
+                          options={[
+                            "Technology",
+                            "Healthcare",
+                            "Finance",
+                            "Education",
+                            "Manufacturing",
+                            "Retail",
+                            "Consulting",
+                            "Non-profit",
+                            "Government",
+                            "Other"
+                          ]}
+                          placeholder="Select industries you specialize in"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="coachingStyle">Coaching Style</Label>
+                        <Select
+                          value={formData.coachingStyle}
+                          onValueChange={(value) => handleChange("coachingStyle", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your coaching style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="directive">Directive</SelectItem>
+                            <SelectItem value="holistic">Holistic</SelectItem>
+                            <SelectItem value="supportive">Supportive</SelectItem>
+                            <SelectItem value="challenging">Challenging</SelectItem>
+                            <SelectItem value="analytical">Analytical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+                        <Input
+                          id="hourlyRate"
+                          type="number"
+                          min="0"
+                          step="10"
+                          value={formData.hourlyRate}
+                          onChange={(e) => handleChange("hourlyRate", parseInt(e.target.value))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="languages">Languages</Label>
+                        <MultiSelect
+                          value={formData.languages}
+                          onChange={(value) => handleChange("languages", value)}
+                          options={[
+                            "English",
+                            "Spanish",
+                            "French",
+                            "German",
+                            "Mandarin",
+                            "Japanese",
+                            "Korean",
+                            "Arabic",
+                            "Hindi",
+                            "Other"
+                          ]}
+                          placeholder="Select languages you can coach in"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="certifications">Certifications</Label>
+                        <MultiSelect
+                          value={formData.certifications}
+                          onChange={(value) => handleChange("certifications", value)}
+                          options={[
+                            "ICF ACC",
+                            "ICF PCC",
+                            "ICF MCC",
+                            "CPCC",
+                            "BCC",
+                            "SHRM-CP",
+                            "SHRM-SCP",
+                            "Other"
+                          ]}
+                          placeholder="Select your certifications"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="availability">Availability</Label>
+                        <MultiSelect
+                          value={formData.availability}
+                          onChange={(value) => handleChange("availability", value)}
+                          options={[
+                            "Weekday Mornings",
+                            "Weekday Afternoons",
+                            "Weekday Evenings",
+                            "Weekend Mornings",
+                            "Weekend Afternoons",
+                            "Weekend Evenings",
+                            "Flexible"
+                          ]}
+                          placeholder="Select your availability"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>

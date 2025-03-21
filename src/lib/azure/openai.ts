@@ -1,5 +1,4 @@
 import { AzureOpenAI } from "openai";
-import { AzureKeyCredential } from "@azure/core-auth";
 
 // Initialize OpenAI client
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT || "";
@@ -43,13 +42,6 @@ export async function generateText(
 }
 
 /**
- * Generate a chat completion using Azure OpenAI
- * @param messages The messages to generate a completion from
- * @param maxTokens The maximum number of tokens to generate
- * @param temperature The temperature to use for generation (0-1)
- * @returns The generated message
- */
-/**
  * Generate a chat completion using Azure OpenAI with retry logic
  * @param messages The messages to generate a completion from
  * @param maxTokens The maximum number of tokens to generate
@@ -61,11 +53,10 @@ export async function generateChatCompletion(
   maxTokens: number = 500,
   temperature: number = 0.7
 ): Promise<string> {
-  const maxRetries = 4; // Increased from 3 to 4 retries
+  const maxRetries = 4;
   let retries = 0;
   let lastError: any = null;
 
-  // Estimate total input tokens for logging
   const estimatedInputTokens = messages.reduce((total, msg) => {
     return total + estimateTokenCount(msg.content);
   }, 0);
@@ -74,20 +65,16 @@ export async function generateChatCompletion(
 
   while (retries < maxRetries) {
     try {
-      // Add delay based on retry count (exponential backoff)
       if (retries > 0) {
-        // For rate limit errors, use the Retry-After header or default to 60s
         const isRateLimit = lastError && (lastError.status === 429 ||
           (lastError.error && lastError.error.code === '429'));
           
         let delay;
         if (isRateLimit) {
-          // Get Retry-After from headers or default to 60s for S0 tier rate limits
           const retryAfter = lastError.headers?.['retry-after'] || 60;
           delay = retryAfter * 1000;
           console.log(`Rate limit hit. Waiting ${retryAfter}s before retry...`);
         } else {
-          // Regular exponential backoff for other errors
           const baseDelay = 2000;
           delay = Math.min(baseDelay * Math.pow(2, retries - 1), 30000);
         }
@@ -96,14 +83,11 @@ export async function generateChatCompletion(
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-      // Progressively reduce token usage on retries
       const tokenReductionFactor = [1, 0.7, 0.5, 0.3][retries];
       const adjustedMaxTokens = Math.floor(maxTokens * tokenReductionFactor);
       
-      // On later retries, simplify the prompt to reduce token usage
       let adjustedMessages = messages;
       if (retries >= 2 && messages.length > 1) {
-        // Keep system message but simplify it if it's too long
         const systemMsg = {
           role: messages[0].role,
           content: messages[0].content.length > 500
@@ -111,7 +95,6 @@ export async function generateChatCompletion(
             : messages[0].content
         };
         
-        // Keep user message but truncate if needed
         const userMsg = {
           role: messages[messages.length - 1].role,
           content: messages[messages.length - 1].content.length > 1000
@@ -136,20 +119,16 @@ export async function generateChatCompletion(
       lastError = error;
       console.error(`Error generating chat completion (attempt ${retries + 1}/${maxRetries}):`, error);
       
-      // Retry on rate limit errors and also on certain other errors
       if (error.status === 429 || (error.error && error.error.code === '429') ||
           error.message.includes("Connection error") ||
           error.message.includes("timeout")) {
         retries++;
-        // Continue to the next iteration to retry
       } else {
-        // For other errors, don't retry
         break;
       }
     }
   }
 
-  // After max retries or on non-retryable error
   if (lastError) {
     if (lastError.status === 429 || (lastError.error && lastError.error.code === '429')) {
       throw new Error("AI service rate limit reached. Please try again in a minute.");
@@ -162,17 +141,11 @@ export async function generateChatCompletion(
 }
 
 /**
- * Analyze a resume using Azure OpenAI
- * @param resumeText The text of the resume to analyze
- * @returns An analysis of the resume
- */
-/**
  * Estimates token count in a text string
  * @param text The text to estimate tokens for
  * @returns Approximate token count
  */
 function estimateTokenCount(text: string): number {
-  // A very rough estimation: 1 token ≈ 4 characters for English text
   return Math.ceil(text.length / 4);
 }
 
@@ -183,17 +156,14 @@ function estimateTokenCount(text: string): number {
  */
 export async function analyzeResume(resumeText: string): Promise<any> {
   try {
-    // Token efficiency: Truncate text more aggressively for S0 tier
-    const maxChars = 8000; // ~2000 tokens for S0 tier
+    const maxChars = 8000;
     const truncatedText = resumeText.length > maxChars
       ? resumeText.substring(0, maxChars) + "... [truncated]"
       : resumeText;
     
-    // Estimate token usage for logging and debugging
     const estimatedTokens = estimateTokenCount(truncatedText);
     console.log(`Analyzing resume: ${resumeText.length} chars → ${truncatedText.length} chars (est. ${estimatedTokens} tokens)`);
     
-    // Ultra-compact prompt to minimize token usage
     const systemPrompt = `Analyze resume. Extract JSON with:
 - skills: [string] (max 8 skills)
 - experience: {years: number, domains: [string]}
@@ -208,13 +178,9 @@ Keep all responses very concise.`;
       { role: "user" as const, content: truncatedText },
     ];
 
-    // Reduce max tokens to avoid rate limit issues
-    // For S0 tier (1000 TPM), this allows more successful calls
-    const response = await generateChatCompletion(messages, 600, 0.3); // Reduced max tokens for S0 tier
+    const response = await generateChatCompletion(messages, 600, 0.3);
     
-    // Parse the JSON response
     try {
-      // Clean up markdown code block syntax if present
       const cleanResponse = response.trim().replace(/^```json\n|\n```$/g, '');
       return JSON.parse(cleanResponse);
     } catch (parseError) {
@@ -227,7 +193,6 @@ Keep all responses very concise.`;
   } catch (error) {
     console.error("Error analyzing resume:", error);
     
-    // Enhanced fallback that provides useful information even without OpenAI
     if (error instanceof Error && (
         error.message.includes("rate limit") ||
         error.message.includes("404") ||
@@ -235,7 +200,6 @@ Keep all responses very concise.`;
     )) {
       console.log("Using smart fallback resume analysis");
       
-      // Extract basic information from the resume text for fallback
       const skills = extractSkillsFromText(resumeText);
       const hasEducation = resumeText.toLowerCase().includes("education") ||
                           resumeText.toLowerCase().includes("university") ||
@@ -331,19 +295,16 @@ function extractPossibleRoles(text: string): string[] {
  */
 export async function analyzeDocument(documentText: string, documentType: string = "general"): Promise<any> {
   try {
-    // Limit the text length to avoid token limit issues
-    const maxChars = 15000; // Roughly ~3000-4000 tokens
+    const maxChars = 15000;
     const truncatedText = documentText.length > maxChars
       ? documentText.substring(0, maxChars) + "... [truncated for analysis]"
       : documentText;
     
     console.log(`Analyzing document of type: ${documentType}, length: ${documentText.length} chars (${truncatedText.length} after truncation)`);
     
-    // Determine the appropriate system prompt based on document type
     let systemPrompt = "";
     
     if (documentType.toLowerCase().includes("resume")) {
-      // Use the resume-specific analyzer with truncated text
       return analyzeResume(truncatedText);
     } else if (documentType.toLowerCase().includes("cover")) {
       systemPrompt = `
@@ -360,7 +321,6 @@ export async function analyzeDocument(documentText: string, documentType: string
         - improvementSuggestions (object with up to 3 keys)
       `;
     } else {
-      // General document analysis - simplified to reduce token usage
       systemPrompt = `
         You are an expert document analyzer. Analyze the following document and provide:
         1. Document type detection
@@ -379,10 +339,8 @@ export async function analyzeDocument(documentText: string, documentType: string
       { role: "user" as const, content: truncatedText },
     ];
 
-    // Use lower token limit for non-resume documents to avoid rate limits
     const response = await generateChatCompletion(messages, 1000, 0.3);
     
-    // Parse the JSON response
     try {
       return JSON.parse(response);
     } catch (parseError) {
@@ -395,7 +353,6 @@ export async function analyzeDocument(documentText: string, documentType: string
   } catch (error) {
     console.error("Error analyzing document:", error);
     
-    // Provide a simplified fallback response when hitting rate limits
     if (error instanceof Error && error.message.includes("rate limit")) {
       console.log("Using simplified analysis due to rate limit");
       return {
@@ -413,74 +370,6 @@ export async function analyzeDocument(documentText: string, documentType: string
       };
     }
     
-    throw error;
-  }
-}
-
-/**
- * Generate job recommendations based on user profile and preferences
- * @param userProfile The user's profile
- * @param preferences The user's job preferences
- * @returns Job recommendations
- */
-export async function generateJobRecommendations(
-  userProfile: any,
-  preferences: any
-): Promise<string> {
-  try {
-    const prompt = `
-      Based on the following user profile and preferences, suggest job roles that would be a good fit.
-      
-      User Profile:
-      ${JSON.stringify(userProfile, null, 2)}
-      
-      Job Preferences:
-      ${JSON.stringify(preferences, null, 2)}
-      
-      Provide a list of recommended job roles with brief explanations of why they would be a good fit.
-    `;
-
-    return await generateText(prompt, 800, 0.5);
-  } catch (error) {
-    console.error("Error generating job recommendations:", error);
-    throw error;
-  }
-}
-
-/**
- * Generate interview questions based on a job description
- * @param jobDescription The job description
- * @param userSkills The user's skills
- * @returns Interview questions
- */
-export async function generateInterviewQuestions(
-  jobDescription: string,
-  userSkills: string[]
-): Promise<string[]> {
-  try {
-    const prompt = `
-      Generate 5 interview questions for the following job description, tailored to assess the candidate's skills.
-      
-      Job Description:
-      ${jobDescription}
-      
-      Candidate Skills:
-      ${userSkills.join(", ")}
-      
-      Format your response as a JSON array of strings, each containing one interview question.
-    `;
-
-    const response = await generateText(prompt, 800, 0.7);
-    
-    // Parse the JSON response
-    try {
-      return JSON.parse(response);
-    } catch (parseError) {
-      console.error("Error parsing interview questions:", parseError);
-      return ["Failed to generate interview questions. Please try again."];
-    }
-  } catch (error) {
-    console.error("Error generating interview questions:", error);
     throw error;
   }
 }
@@ -556,34 +445,6 @@ export async function generateCoachMatches(
     }
   } catch (error) {
     console.error("Error generating coach matches:", error);
-    // Return empty array instead of throwing to handle gracefully
     return [];
   }
 }
-  try {
-    const prompt = `
-      Generate 5 interview questions for the following job description, tailored to assess the candidate's skills.
-      
-      Job Description:
-      ${jobDescription}
-      
-      Candidate Skills:
-      ${userSkills.join(", ")}
-      
-      Format your response as a JSON array of strings, each containing one interview question.
-    `;
-
-    const response = await generateText(prompt, 800, 0.7);
-    
-    // Parse the JSON response
-    try {
-      return JSON.parse(response);
-    } catch (parseError) {
-      console.error("Error parsing interview questions:", parseError);
-      return ["Failed to generate interview questions. Please try again."];
-    }
-  } catch (error) {
-    console.error("Error generating interview questions:", error);
-    throw error;
-  }
-} 

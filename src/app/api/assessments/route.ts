@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { createAssessment, getAssessmentByUserId } from "@/lib/database";
+import { createAssessment, getAssessmentByUserId, getAssessmentsByUserId } from "@/lib/database";
 import { z } from "zod";
 
 // Define validation schema for assessment data
@@ -97,6 +97,32 @@ export async function POST(request: Request) {
     console.error("Error processing assessment submission:", error);
     return NextResponse.json(
       { error: "Failed to process assessment submission" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GETAssessments() {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return new NextResponse(
+        JSON.stringify({ error: "Not authenticated", assessments: [] }),
+        { status: 401 }
+      );
+    }
+
+    const assessments = await getAssessmentsByUserId(session.user.id);
+    
+    return new NextResponse(
+      JSON.stringify({ assessments: assessments || [] }),
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error fetching assessments:", error);
+    return new NextResponse(
+      JSON.stringify({ error: "Internal server error", assessments: [] }),
       { status: 500 }
     );
   }

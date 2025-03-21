@@ -1,263 +1,230 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Settings, Eye, Volume2, Keyboard, Brain } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useAccessibility } from '@/context/AccessibilityContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { useSpeechSynthesis } from 'react-speech-kit';
-import { Mic, Eye, Volume2, MessageSquare, Settings, Palette } from 'lucide-react';
-
-interface AccessibilitySettings {
-  fontSize: number;
-  highContrast: boolean;
-  reducedMotion: boolean;
-  colorBlindMode: string;
-  textToSpeech: boolean;
-  speechToText: boolean;
-  simplifiedUI: boolean;
-}
-
-const defaultSettings: AccessibilitySettings = {
-  fontSize: 100,
-  highContrast: false,
-  reducedMotion: false,
-  colorBlindMode: 'none',
-  textToSpeech: false,
-  speechToText: false,
-  simplifiedUI: false,
-};
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function AccessibilityWidget() {
-  const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
-  const { speak, cancel, speaking } = useSpeechSynthesis();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { settings, updateSettings } = useAccessibility();
+  const [open, setOpen] = useState(false);
 
-  // Apply settings to document
-  const applySettings = () => {
-    // Font size
-    document.documentElement.style.fontSize = `${settings.fontSize}%`;
-
-    // High contrast
-    if (settings.highContrast) {
-      document.documentElement.classList.add('high-contrast');
-    } else {
-      document.documentElement.classList.remove('high-contrast');
+  const handleClick = () => {
+    if (session) {
+      router.push('/profile#accessibility');
     }
-
-    // Reduced motion
-    if (settings.reducedMotion) {
-      document.documentElement.classList.add('reduced-motion');
-    } else {
-      document.documentElement.classList.remove('reduced-motion');
-    }
-
-    // Color blind mode
-    document.documentElement.setAttribute('data-color-blind-mode', settings.colorBlindMode);
-
-    // Simplified UI
-    if (settings.simplifiedUI) {
-      document.documentElement.classList.add('simplified-ui');
-    } else {
-      document.documentElement.classList.remove('simplified-ui');
-    }
-
-    // Save settings to localStorage
-    localStorage.setItem('accessibility-settings', JSON.stringify(settings));
-  };
-
-  // Load settings from localStorage on component mount
-  useEffect(() => {
-    const savedSettings = localStorage.getItem('accessibility-settings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
-    applySettings();
-  }, []);
-
-  // Update a single setting
-  const updateSetting = (key: keyof AccessibilitySettings, value: any) => {
-    setSettings((prev) => {
-      const newSettings = { ...prev, [key]: value };
-      // Save and apply immediately
-      localStorage.setItem('accessibility-settings', JSON.stringify(newSettings));
-      return newSettings;
-    });
-    applySettings();
-  };
-
-  // Reset all settings to default
-  const resetSettings = () => {
-    setSettings(defaultSettings);
-    localStorage.removeItem('accessibility-settings');
-    applySettings();
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="fixed bottom-4 right-4 rounded-full h-12 w-12 z-50">
-          <Settings className="h-6 w-6" />
-          <span className="sr-only">Accessibility Settings</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Accessibility Settings</DialogTitle>
-        </DialogHeader>
-        <Tabs defaultValue="visual">
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="visual">
-              <Eye className="h-4 w-4 mr-2" />
-              Visual
-            </TabsTrigger>
-            <TabsTrigger value="audio">
-              <Volume2 className="h-4 w-4 mr-2" />
-              Audio
-            </TabsTrigger>
-            <TabsTrigger value="input">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Input
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="visual" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="font-size">Font Size ({settings.fontSize}%)</Label>
-                <Slider
-                  id="font-size"
-                  min={75}
-                  max={200}
-                  step={5}
-                  value={[settings.fontSize]}
-                  onValueChange={(value: number[]) => updateSetting('fontSize', value[0])}
-                  className="mt-2"
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="high-contrast">High Contrast</Label>
-                <Switch
-                  id="high-contrast"
-                  checked={settings.highContrast}
-                  onCheckedChange={(checked) => updateSetting('highContrast', checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="reduced-motion">Reduced Motion</Label>
-                <Switch
-                  id="reduced-motion"
-                  checked={settings.reducedMotion}
-                  onCheckedChange={(checked) => updateSetting('reducedMotion', checked)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="color-blind-mode">Color Blind Mode</Label>
-                <Select
-                  value={settings.colorBlindMode}
-                  onValueChange={(value) => updateSetting('colorBlindMode', value)}
-                >
-                  <SelectTrigger id="color-blind-mode">
-                    <SelectValue placeholder="Select a color blind mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="protanopia">Protanopia (Red-Blind)</SelectItem>
-                    <SelectItem value="deuteranopia">Deuteranopia (Green-Blind)</SelectItem>
-                    <SelectItem value="tritanopia">Tritanopia (Blue-Blind)</SelectItem>
-                    <SelectItem value="achromatopsia">Achromatopsia (Monochromacy)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="simplified-ui">Simplified UI</Label>
-                <Switch
-                  id="simplified-ui"
-                  checked={settings.simplifiedUI}
-                  onCheckedChange={(checked) => updateSetting('simplifiedUI', checked)}
-                />
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="audio" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="text-to-speech">Text to Speech</Label>
-                <Switch
-                  id="text-to-speech"
-                  checked={settings.textToSpeech}
-                  onCheckedChange={(checked) => updateSetting('textToSpeech', checked)}
-                />
-              </div>
-              
-              <div className="flex flex-col space-y-2">
-                <Label>Test Text to Speech</Label>
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => speak({ text: 'This is a test of the text to speech feature on the Bingo Job Coach Platform.' })}
-                    disabled={speaking}
-                  >
-                    <Volume2 className="h-4 w-4 mr-2" />
-                    Speak Test
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => cancel()}
-                    disabled={!speaking}
-                  >
-                    Stop
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="input" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="speech-to-text">Speech to Text</Label>
-                <Switch
-                  id="speech-to-text"
-                  checked={settings.speechToText}
-                  onCheckedChange={(checked) => updateSetting('speechToText', checked)}
-                />
-              </div>
-              
-              <div className="flex flex-col space-y-2">
-                <Label>Communication Preferences</Label>
-                <Select defaultValue="text">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your preferred communication method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="voice">Voice</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="asl">American Sign Language</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-        
-        <div className="flex justify-between mt-4">
-          <Button variant="outline" onClick={resetSettings}>
-            Reset to Default
-          </Button>
-          <Button onClick={applySettings}>
-            Apply Settings
+        <div className="fixed bottom-6 right-6" style={{ zIndex: 9999 }}>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="rounded-full h-12 w-12 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={session ? handleClick : undefined}
+            aria-label="Accessibility Settings"
+          >
+            <Settings className="h-6 w-6" />
           </Button>
         </div>
-      </DialogContent>
+      </DialogTrigger>
+      
+      {!session && (
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Accessibility Settings</DialogTitle>
+            <DialogDescription>
+              Customize your accessibility preferences. Sign in to save these settings permanently.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="visual" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="visual">
+                <Eye className="h-4 w-4 mr-2" />
+                Visual
+              </TabsTrigger>
+              <TabsTrigger value="audio">
+                <Volume2 className="h-4 w-4 mr-2" />
+                Audio
+              </TabsTrigger>
+              <TabsTrigger value="interaction">
+                <Keyboard className="h-4 w-4 mr-2" />
+                Interaction
+              </TabsTrigger>
+              <TabsTrigger value="cognitive">
+                <Brain className="h-4 w-4 mr-2" />
+                Cognitive
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="visual" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="high-contrast">High Contrast</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Increase contrast for better visibility
+                    </p>
+                  </div>
+                  <Switch
+                    id="high-contrast"
+                    checked={settings.highContrast}
+                    onCheckedChange={(checked) => updateSettings({ highContrast: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="large-text">Large Text</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Increase text size throughout the application
+                    </p>
+                  </div>
+                  <Switch
+                    id="large-text"
+                    checked={settings.largeText}
+                    onCheckedChange={(checked) => updateSettings({ largeText: checked })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="color-blind-mode">Color Blind Mode</Label>
+                  <Select
+                    value={settings.colorBlindMode}
+                    onValueChange={(value: any) => updateSettings({ colorBlindMode: value })}
+                  >
+                    <SelectTrigger id="color-blind-mode">
+                      <SelectValue placeholder="Select a mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="protanopia">Protanopia (Red-Blind)</SelectItem>
+                      <SelectItem value="deuteranopia">Deuteranopia (Green-Blind)</SelectItem>
+                      <SelectItem value="tritanopia">Tritanopia (Blue-Blind)</SelectItem>
+                      <SelectItem value="achromatopsia">Achromatopsia (Monochromacy)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="audio" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="text-to-speech">Text to Speech</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable text-to-speech functionality
+                    </p>
+                  </div>
+                  <Switch
+                    id="text-to-speech"
+                    checked={settings.textToSpeech}
+                    onCheckedChange={(checked) => updateSettings({ textToSpeech: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-read">Auto-Read Content</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically read page content
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-read"
+                    checked={settings.autoReadContent}
+                    onCheckedChange={(checked) => updateSettings({ autoReadContent: checked })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="interaction" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="reduced-motion">Reduced Motion</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Minimize animations and transitions
+                    </p>
+                  </div>
+                  <Switch
+                    id="reduced-motion"
+                    checked={settings.reducedMotion}
+                    onCheckedChange={(checked) => updateSettings({ reducedMotion: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="enhanced-keyboard">Enhanced Keyboard Navigation</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Improve keyboard navigation and shortcuts
+                    </p>
+                  </div>
+                  <Switch
+                    id="enhanced-keyboard"
+                    checked={settings.enhancedKeyboardNav}
+                    onCheckedChange={(checked) => updateSettings({ enhancedKeyboardNav: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="speech-recognition">Speech Recognition</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Control using voice commands
+                    </p>
+                  </div>
+                  <Switch
+                    id="speech-recognition"
+                    checked={settings.speechRecognition}
+                    onCheckedChange={(checked) => updateSettings({ speechRecognition: checked })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cognitive" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="screen-reader">Screen Reader Optimization</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Optimize content for screen readers
+                    </p>
+                  </div>
+                  <Switch
+                    id="screen-reader"
+                    checked={settings.screenReader}
+                    onCheckedChange={(checked) => updateSettings({ screenReader: checked })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      )}
     </Dialog>
   );
 } 

@@ -8,6 +8,7 @@ import { Loader2, MessageCircle } from "lucide-react";
 import { decryptMessage } from "@/lib/utils/encryption";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface Message {
   id: string;
@@ -28,6 +29,7 @@ interface Conversation {
     id: string;
     name: string;
     profileImage?: string;
+    userId: string;
   };
   seeker: {
     id: string;
@@ -37,43 +39,68 @@ interface Conversation {
   messages: Message[];
 }
 
-export default function ConversationSidebar() {
+interface ConversationSidebarProps {
+  initialConversations: Conversation[];
+}
+
+export default function ConversationSidebar({ initialConversations = [] }: ConversationSidebarProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
+  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Update conversations when initialConversations changes
   useEffect(() => {
-    if (session?.user) {
-      fetchConversations();
-    }
-  }, [session]);
+    setConversations(initialConversations);
+  }, [initialConversations]);
 
-  const fetchConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/conversations");
-      if (!response.ok) {
-        throw new Error("Failed to fetch conversations");
+  // Fetch conversations and messages
+  useEffect(() => {
+    const fetchConversations = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('/api/conversations');
+        if (!response.ok) {
+          throw new Error('Failed to fetch conversations');
+        }
+        const data = await response.json();
+        // Ensure we have an array of conversations
+        setConversations(data.conversations || []);
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+        setError('Failed to fetch messages');
+        toast({
+          title: "Error",
+          description: "Failed to fetch messages. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
-      const data = await response.json();
-      setConversations(data.conversations);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "An error occurred";
-      setError(message);
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchConversations();
+  }, [session?.user?.id, toast]);
+
+  const getOtherParty = (conversation: Conversation) => {
+    if (!session?.user?.id) return null;
+    // Compare with coach.userId instead of coach.id
+    return session.user.id === conversation.coach.userId
+      ? conversation.seeker
+      : conversation.coach;
   };
 
-  const getLastMessage = async (conversation: Conversation) => {
+  const getMessagePreview = (conversation: Conversation) => {
+    if (!conversation.messages || conversation.messages.length === 0) {
+      return "No messages yet";
+    }
+
     const lastMessage = conversation.messages[conversation.messages.length - 1];
     if (!lastMessage) return "No messages yet";
 
@@ -83,21 +110,9 @@ export default function ConversationSidebar() {
       return "Shared an assessment";
     }
 
-    try {
-      // Use conversation ID as encryption key
-      const decrypted = await decryptMessage(lastMessage.content, conversation.id);
-      return decrypted.length > 50 ? decrypted.substring(0, 47) + "..." : decrypted;
-    } catch (error) {
-      console.error("Failed to decrypt message:", error);
-      return "Message unavailable";
-    }
-  };
-
-  const getOtherParty = (conversation: Conversation) => {
-    if (!session?.user?.id) return null;
-    return session.user.id === conversation.coach.id
-      ? conversation.seeker
-      : conversation.coach;
+    return lastMessage.content.length > 50 
+      ? lastMessage.content.substring(0, 47) + "..."
+      : lastMessage.content;
   };
 
   if (loading) {
@@ -110,8 +125,38 @@ export default function ConversationSidebar() {
 
   if (error) {
     return (
-      <div className="p-4 text-center text-red-500">
-        {error}
+      <div className="flex flex-col items-center justify-center min-h-[200px] space-y-4">
+        <p className="text-red-500">{error}</p>
+        <Button 
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            // Retry fetching conversations
+            const fetchConversations = async () => {
+              try {
+                const response = await fetch('/api/conversations');
+                if (!response.ok) {
+                  throw new Error('Failed to fetch conversations');
+                }
+                const data = await response.json();
+                setConversations(data.conversations || []);
+                setLoading(false);
+              } catch (error) {
+                setError('Failed to fetch messages');
+                setLoading(false);
+                toast({
+                  title: "Error",
+                  description: "Failed to fetch messages. Please try again.",
+                  variant: "destructive"
+                });
+              }
+            };
+            fetchConversations();
+          }}
+          variant="outline"
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -119,7 +164,7 @@ export default function ConversationSidebar() {
   return (
     <div className="space-y-2">
       <div className="font-semibold text-lg mb-4">Messages</div>
-      {conversations.length === 0 ? (
+      {!conversations || conversations.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">
           No conversations yet
         </p>
@@ -131,7 +176,7 @@ export default function ConversationSidebar() {
           return (
             <Link
               key={conversation.id}
-              href={`/conversations/${conversation.id}`}
+              href={`${pathname}?id=${conversation.id}`}
               className="block"
             >
               <Card
@@ -160,7 +205,7 @@ export default function ConversationSidebar() {
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {getLastMessage(conversation)}
+                      {getMessagePreview(conversation)}
                     </div>
                   </div>
                 </div>

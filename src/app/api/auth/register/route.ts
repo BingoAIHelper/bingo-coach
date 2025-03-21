@@ -3,18 +3,41 @@ import { createUser, getUserByEmail } from "@/lib/database";
 import { z } from "zod";
 import bcrypt from 'bcryptjs';
 
-// Define validation schema for registration data
-const registerSchema = z.object({
+// Base schema for common fields
+const baseUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["seeker", "coach"]),
-  // Optional fields
   bio: z.string().optional(),
   location: z.string().optional(),
   phone: z.string().optional()
 });
+
+// Coach-specific schema
+const coachSchema = baseUserSchema.extend({
+  role: z.literal("coach"),
+  expertise: z.array(z.string()).optional(),
+  specialties: z.array(z.string()).optional(),
+  yearsExperience: z.number().optional(),
+  industries: z.array(z.string()).optional(),
+  coachingStyle: z.string().optional(),
+  hourlyRate: z.number().optional(),
+  availability: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).optional()
+});
+
+// Seeker schema
+const seekerSchema = baseUserSchema.extend({
+  role: z.literal("seeker")
+});
+
+// Combined schema that validates based on role
+const registerSchema = z.discriminatedUnion("role", [
+  coachSchema,
+  seekerSchema
+]);
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,19 +55,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      role,
-      bio,
-      location,
-      phone
-    } = validationResult.data;
+    const data = validationResult.data;
     
     // Check if user already exists
-    const existingUser = await getUserByEmail(email);
+    const existingUser = await getUserByEmail(data.email);
     if (existingUser) {
       return NextResponse.json(
         { error: "User with this email already exists" },
@@ -53,25 +67,44 @@ export async function POST(req: NextRequest) {
     }
     
     // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
     
-    // Create the user in the database
-    const newUser = await createUser({
-      email,
-      name: `${firstName} ${lastName}`,
-      firstName,
-      lastName,
+    // Prepare base user data
+    const baseUserData = {
+      email: data.email,
+      name: `${data.firstName} ${data.lastName}`,
+      firstName: data.firstName,
+      lastName: data.lastName,
       password: hashedPassword,
-      role,
-      isCoach: role === "coach",
-      bio,
-      location,
-      phone,
+      role: data.role,
+      isCoach: data.role === "coach",
+      bio: data.bio,
+      location: data.location,
+      phone: data.phone,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+
+    // Add coach-specific data if registering as a coach
+    const userData = data.role === "coach"
+      ? {
+          ...baseUserData,
+          expertise: data.expertise || [],
+          specialties: data.specialties || [],
+          yearsExperience: data.yearsExperience,
+          industries: data.industries || [],
+          coachingStyle: data.coachingStyle,
+          hourlyRate: data.hourlyRate,
+          availability: data.availability || [],
+          languages: data.languages || [],
+          certifications: data.certifications || []
+        }
+      : baseUserData;
     
-    // Return the new user
+    // Create the user in the database
+    const newUser = await createUser(userData);
+    
+    // Return the new user (excluding sensitive data)
     return NextResponse.json(
       { 
         user: {
@@ -81,6 +114,13 @@ export async function POST(req: NextRequest) {
           firstName: newUser.firstName,
           lastName: newUser.lastName,
           role: newUser.role,
+          ...(newUser.role === "coach" ? {
+            expertise: newUser.expertise,
+            specialties: newUser.specialties,
+            yearsExperience: newUser.yearsExperience,
+            industries: newUser.industries,
+            coachingStyle: newUser.coachingStyle
+          } : {})
         }, 
         message: "User registered successfully" 
       },
@@ -89,7 +129,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Error registering user:", error);
     
-    // Ensure a consistent error response
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : "Failed to register user",
