@@ -255,7 +255,7 @@ export default function SignUp() {
       
       // Redirect to sign in page after successful registration
       // Use window.location to bypass middleware and prevent redirect loops
-      window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(`/${formData.role}/assessment`)}`;
+      window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(`/${formData.role}/dashboard?section=assessment`)}`;
     } catch (err) {
       console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "An error occurred during registration. Please try again.");

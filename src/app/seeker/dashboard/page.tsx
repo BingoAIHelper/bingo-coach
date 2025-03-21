@@ -8,10 +8,11 @@ import Link from "next/link";
 import { Bell, Briefcase, Award, Calendar, MessageSquare, FileText, CheckCircle } from "lucide-react";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { DashboardDocuments } from "@/components/documents/DashboardDocuments";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Progress } from "@/components/ui/progress";
 import { AIRecommendations } from "@/components/AIRecommendations";
+import { useEffect } from "react";
 
 // Import section components
 import AssessmentSection from "@/components/dashboard/AssessmentSection";
@@ -24,6 +25,31 @@ export default function SeekerDashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentSection = searchParams.get("section");
+  const router = useRouter();
+
+  // Check if assessment is completed
+  useEffect(() => {
+    const checkAssessmentStatus = async () => {
+      if (!session?.user?.id) return;
+
+      try {
+        const response = await fetch(`/api/seekers?userId=${session.user.id}`);
+        const data = await response.json();
+        
+        // If assessment is not completed and we're not already on the assessment section,
+        // redirect to the assessment section
+        if (!data?.seeker?.assessmentCompleted && currentSection !== "assessment") {
+          router.push("/seeker/dashboard?section=assessment");
+        }
+      } catch (error) {
+        console.error("Error checking assessment status:", error);
+      }
+    };
+
+    if (status === "authenticated") {
+      checkAssessmentStatus();
+    }
+  }, [session, status, currentSection, router]);
 
   const getSectionTitle = () => {
     switch (currentSection) {

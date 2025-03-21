@@ -13,6 +13,9 @@ export interface AccessibilitySettings {
   speechRecognition: boolean;
   autoReadContent: boolean;
   hasCompletedOnboarding: boolean;
+  fontSize: number;
+  contrast: "normal" | "high" | "inverted";
+  onboardingCompleted: boolean;
 }
 
 interface AccessibilityContextType {
@@ -34,6 +37,9 @@ const defaultSettings: AccessibilitySettings = {
   speechRecognition: false, // Disabled by default
   autoReadContent: false, // Disabled by default
   hasCompletedOnboarding: false,
+  fontSize: 16,
+  contrast: "normal",
+  onboardingCompleted: false
 };
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);

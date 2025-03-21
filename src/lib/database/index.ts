@@ -1077,7 +1077,7 @@ export async function createMessage(data: {
           select: {
             id: true,
             title: true,
-            score: true
+            sections: true
           }
         } : false
       }
@@ -1172,6 +1172,43 @@ export async function getConversationById(conversationId: string) {
             matchScore: true,
             matchReason: true
           }
+        },
+        messages: {
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            receiver: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true
+              }
+            },
+            document: {
+              select: {
+                id: true,
+                title: true,
+                fileName: true
+              }
+            },
+            assessment: {
+              select: {
+                id: true,
+                title: true,
+                sections: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
         }
       }
     });
@@ -1217,7 +1254,7 @@ export async function getMessagesByConversationId(conversationId: string) {
           select: {
             id: true,
             title: true,
-            score: true
+            sections: true
           }
         }
       },

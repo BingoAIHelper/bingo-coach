@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify the user has permission to update this match
-    if (match.coachId !== session.user.id && match.seekerId !== session.user.id) {
+    if (match.coach.userId !== session.user.id && match.seekerId !== session.user.id) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
@@ -156,7 +156,7 @@ export async function PUT(request: NextRequest) {
       // Create conversation if it doesn't exist
       if (!conversation) {
         conversation = await createConversation({
-          coachId: match.coachId,
+          coachId: match.coach.userId,
           seekerId: match.seekerId,
           matchId: matchId
         });
@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
       await createMessage({
         conversationId: conversation.id,
         senderId: session.user.id,
-        content: session.user.id === match.coachId
+        content: session.user.id === match.coach.userId
           ? "I'm excited to work with you as your career coach! Let's start by discussing your career goals and how I can help you achieve them."
           : "Thank you for accepting! I'm looking forward to working with you. I'd love to share my career goals and hear how you can help me achieve them.",
         type: "text"
@@ -188,10 +188,10 @@ export async function PUT(request: NextRequest) {
       });
 
       // Notify the other user
-      if (session.user.id === match.coachId) {
+      if (session.user.id === match.coach.userId) {
         await checkForNewNotifications(match.seekerId, false);
       } else {
-        await checkForNewNotifications(match.coachId, true);
+        await checkForNewNotifications(match.coach.userId, true);
       }
     }
 

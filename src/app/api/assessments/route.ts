@@ -30,24 +30,37 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Get user ID from session
-    const userId = session.user.id;
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const assessmentId = searchParams.get("assessmentId");
+    const userId = searchParams.get("userId");
     
-    // Get assessment for the user
-    const assessment = await getAssessmentByUserId(userId);
-    
-    if (!assessment) {
-      return NextResponse.json(
-        { error: "Assessment not found", completed: false },
-        { status: 404 }
-      );
+    // If assessmentId is provided, get specific assessment
+    if (assessmentId) {
+      const assessment = await getAssessmentByUserId(userId || session.user.id);
+      
+      if (!assessment) {
+        return NextResponse.json(
+          { error: "Assessment not found", completed: false },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json({ assessment, completed: true });
     }
     
-    return NextResponse.json({ assessment, completed: true });
+    // Otherwise, get all assessments for the specified user
+    const targetUserId = userId || session.user.id;
+    const assessments = await getAssessmentsByUserId(targetUserId);
+    
+    return NextResponse.json({ 
+      assessments: assessments || [],
+      completed: assessments && assessments.length > 0
+    });
   } catch (error) {
-    console.error("Error getting assessment:", error);
+    console.error("Error getting assessments:", error);
     return NextResponse.json(
-      { error: "Failed to get assessment" },
+      { error: "Failed to get assessments" },
       { status: 500 }
     );
   }

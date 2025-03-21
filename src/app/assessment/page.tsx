@@ -119,24 +119,100 @@ export default function AssessmentPage() {
   
   const handleSubmit = async () => {
     try {
-      // Submit assessment data to API
-      const response = await fetch("/api/assessments", {
+      const assessment = {
+        title: "Initial Assessment",
+        description: "Initial assessment for job seeker profile",
+        sections: [
+          {
+            title: "Disabilities and Accommodations",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What disabilities or accommodations do you need?",
+                options: formData.disabilities,
+                answer: formData.disabilities
+              },
+              {
+                type: "text",
+                question: "Additional details about disabilities or accommodations",
+                answer: formData.disabilityDetails
+              }
+            ]
+          },
+          {
+            title: "Job Preferences",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What type of jobs are you interested in?",
+                options: formData.jobTypes,
+                answer: formData.jobTypes
+              },
+              {
+                type: "text",
+                question: "Preferred industry",
+                answer: formData.jobIndustry
+              },
+              {
+                type: "text",
+                question: "Expected timeframe for job search",
+                answer: formData.timeframe
+              }
+            ]
+          },
+          {
+            title: "Learning and Communication",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What are your preferred learning styles?",
+                options: formData.learningStyles,
+                answer: formData.learningStyles
+              },
+              {
+                type: "multiple_choice",
+                question: "What are your preferred communication styles?",
+                options: formData.communicationStyles,
+                answer: formData.communicationStyles
+              }
+            ]
+          },
+          {
+            title: "Additional Information",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What kind of assistance do you need?",
+                options: formData.assistanceNeeded,
+                answer: formData.assistanceNeeded
+              },
+              {
+                type: "text",
+                question: "Any additional information you'd like to share?",
+                answer: formData.additionalInfo
+              }
+            ]
+          }
+        ]
+      };
+
+      const response = await fetch("/api/assessments/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ assessment }),
       });
-      
+
       if (!response.ok) {
-        throw new Error("Failed to submit assessment");
+        throw new Error("Failed to save assessment");
       }
-      
-      toast.success("Assessment completed successfully!");
-      router.push("/dashboard");
+
+      // Redirect to dashboard after successful save
+      router.push("/seeker/dashboard");
     } catch (error) {
-      console.error("Error submitting assessment:", error);
-      toast.error("Failed to submit assessment. Please try again.");
+      console.error("Error saving assessment:", error);
+      // Handle error (show toast notification, etc.)
     }
   };
   

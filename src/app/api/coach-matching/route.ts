@@ -15,6 +15,7 @@ import {
 } from "@/lib/database";
 import { generateCoachMatches } from "@/lib/azure/openai";
 import { calculateMatchScore } from "@/lib/utils/coach";
+import { prisma } from "@/lib/database";
 
 interface RecommendedMatch {
   coachId?: string;
@@ -27,142 +28,223 @@ interface RecommendedMatch {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
 
-    const user = await getUserById(session.user.id);
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Get existing matches with full user data
-    const existingMatches = user.isCoach
-      ? await getCoachMatchesByCoachId(session.user.id)
-      : await getCoachMatchesBySeekerId(session.user.id);
-
-    // Get all available users based on role
-    const [availableUsers, assessment] = await Promise.all([
-      user.isCoach ? getSeekers() : getCoaches(),
-      user.isCoach ? null : getAssessmentByUserId(user.id)
-    ]);
-
-    // Filter out users who already have matches
-    const matchedUserIds = new Set(existingMatches.map(match => 
-      user.isCoach ? match.seekerId : match.coachId
-    ));
-
-    const availableUsersWithoutMatches = availableUsers.filter(availableUser => 
-      !matchedUserIds.has(availableUser.id)
-    );
-
-    // If user is a seeker and has an assessment, try to generate AI recommendations
-    let recommendedMatches: RecommendedMatch[] = [];
-    if (!user.isCoach && assessment && availableUsersWithoutMatches.length > 0) {
-      try {
-        recommendedMatches = await generateCoachMatches(
-          {
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            bio: user.bio,
-            assessments: [assessment]
-          },
-          availableUsersWithoutMatches.map(coach => ({
-            id: coach.id,
-            name: coach.name,
-            expertise: coach.expertise || [],
-            specialties: coach.specialties || [],
-            bio: coach.bio,
-            yearsExperience: coach.yearsExperience,
-            industries: coach.industries || [],
-            coachingStyle: coach.coachingStyle
-          }))
-        );
-      } catch (error) {
-        console.error("Error generating AI matches:", error);
-        // Fall back to basic matching if AI fails
-        recommendedMatches = availableUsersWithoutMatches.map(coach => ({
-          coachId: coach.id,
-          matchScore: calculateMatchScore(user, coach, assessment).score,
-          matchReason: "Based on profile compatibility"
-        }));
-      }
-    }
-
-    // For coaches, calculate basic match scores with available seekers
-    if (user.isCoach) {
-      recommendedMatches = availableUsersWithoutMatches.map(seeker => ({
-        seekerId: seeker.id,
-        matchScore: seeker.assessment 
-          ? calculateMatchScore(seeker, user, seeker.assessment).score 
-          : 50,
-        matchReason: seeker.assessment 
-          ? "Based on seeker's assessment and your expertise"
-          : "Seeker looking for guidance"
-      }));
-    }
-
-    // Transform matches to include full user data
-    const transformedMatches = existingMatches.map(match => ({
-      id: match.id,
-      status: match.status,
-      matchScore: match.matchScore,
-      matchReason: match.matchReason,
-      createdAt: match.createdAt,
-      updatedAt: match.updatedAt,
-      conversation: match.conversation,
-      coach: {
-        id: match.coach.id,
-        name: match.coach.name,
-        title: match.coach.title || '',
-        avatar: match.coach.avatar || '',
-        location: match.coach.location || '',
-        expertise: match.coach.expertise,
-        specialties: match.coach.specialties,
-        industries: match.coach.industries,
-        yearsExperience: match.coach.yearsExperience,
-        certifications: match.coach.certifications,
-        coachingStyle: match.coach.coachingStyle,
-        bio: match.coach.bio,
-        rating: match.coach.rating || 4.5,
-        totalReviews: match.coach.totalReviews || Math.floor(Math.random() * 50) + 1,
-        availability: match.coach.availability
-      },
-      seeker: {
-        id: match.seeker.id,
-        name: match.seeker.name,
-        title: match.seeker.title || '',
-        avatar: match.seeker.avatar || '',
-        location: match.seeker.location || '',
-        assessmentCompleted: match.seeker.assessments?.length > 0,
-        disabilities: match.seeker.disabilities || [],
-        goals: match.seeker.goals || [],
-        skillLevel: match.seeker.skillLevel || "intermediate",
-        focusArea: match.seeker.focusArea || "",
-        assessment: match.seeker.assessments?.[0] || null
-      }
-    }));
-
-    // Transform recommended matches to include full user data
-    const transformedRecommendedMatches = recommendedMatches.map(match => ({
-      ...match,
-      coach: match.coachId ? availableUsersWithoutMatches.find(u => u.id === match.coachId) : null,
-      seeker: match.seekerId ? availableUsersWithoutMatches.find(u => u.id === match.seekerId) : null
-    }));
-
-    return NextResponse.json({
-      existingMatches: transformedMatches,
-      recommendedMatches: transformedRecommendedMatches,
-      availableUsers: availableUsersWithoutMatches
+    // Check if the user is a coach or seeker
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isCoach: true }
     });
+
+    if (user?.isCoach) {
+      // Get all seekers with their assessments for coaches
+      const seekers = await prisma.user.findMany({
+        where: {
+          isCoach: false,
+          assessmentCompleted: true,
+          assessments: {
+            some: {
+              status: "completed"
+            }
+          }
+        },
+        include: {
+          assessments: {
+            orderBy: {
+              completedAt: 'desc'
+            },
+            take: 1,
+            select: {
+              id: true,
+              title: true,
+              sections: true,
+              completedAt: true,
+              status: true
+            }
+          },
+          seekerMatches: {
+            where: {
+              coach: {
+                userId: session.user.id
+              }
+            },
+            include: {
+              conversation: true,
+              coach: true
+            }
+          }
+        }
+      });
+
+      // Transform seekers data
+      const transformedSeekers = seekers.map((seeker) => {
+        const match = seeker.seekerMatches[0];
+        const assessment = seeker.assessments[0];
+
+        // Parse sections from string to object if it exists
+        const parsedAssessment = assessment ? {
+          ...assessment,
+          sections: typeof assessment.sections === 'string' ? 
+            JSON.parse(assessment.sections) : 
+            assessment.sections
+        } : null;
+
+        const transformedSeeker = {
+          id: seeker.id,
+          name: seeker.name || '',
+          title: seeker.role || '',
+          avatar: '', // Add avatar handling if needed
+          location: seeker.location || '',
+          experience: seeker.experience ? 
+            typeof seeker.experience === 'string' ? 
+              JSON.parse(seeker.experience) : 
+              seeker.experience : 
+            [],
+          goals: parsedAssessment?.sections
+            ?.find((s: { title: string }) => s.title === "Job Preferences")
+            ?.questions
+            ?.find((q: { question: string }) => q.question === "What type of jobs are you interested in?")
+            ?.answer || [],
+          matchScore: match?.matchScore || null,
+          matchReason: match?.matchReason || null,
+          matchStatus: match?.status || null,
+          matchId: match?.id || null,
+          conversationId: match?.conversation?.id || null,
+          assessmentCompleted: seeker.assessmentCompleted,
+          assessment: parsedAssessment,
+          lastActive: seeker.lastActive || seeker.updatedAt
+        };
+
+        // For existing matches, include the original seeker data
+        if (match?.status) {
+          return {
+            ...transformedSeeker,
+            seeker: transformedSeeker // Include the seeker data in the expected format
+          };
+        }
+
+        return transformedSeeker;
+      });
+
+      // Separate seekers into categories
+      const existingMatches = transformedSeekers.filter(s => s.matchStatus);
+      const recommendedMatches = transformedSeekers.filter(s => !s.matchStatus && s.matchScore);
+      const availableUsers = transformedSeekers.filter(s => !s.matchStatus && !s.matchScore);
+
+      return NextResponse.json({
+        existingMatches,
+        recommendedMatches,
+        availableUsers
+      });
+    } else {
+      // Get all coaches with their matches for seekers
+      const coaches = await prisma.user.findMany({
+        where: {
+          isCoach: true,
+          coach: {
+            isNot: null
+          }
+        },
+        include: {
+          coach: {
+            include: {
+              matches: {
+                where: {
+                  seekerId: session.user.id
+                },
+                include: {
+                  conversation: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Filter out coaches without required profile information
+      const validCoaches = coaches.filter(user => {
+        const coach = user.coach;
+        return coach && 
+          coach.expertise && 
+          coach.specialties && 
+          coach.expertise.length > 0 && 
+          coach.specialties.length > 0;
+      });
+
+      // Transform coaches data
+      const transformedCoaches = validCoaches.map((user) => {
+        const coach = user.coach;
+        if (!coach) return null;
+        
+        const match = coach.matches[0];
+
+        return {
+          id: user.id,
+          name: user.name || '',
+          title: user.role || '',
+          avatar: '', // Add avatar handling if needed
+          location: user.location || '',
+          expertise: coach.expertise ? 
+            typeof coach.expertise === 'string' ? 
+              JSON.parse(coach.expertise) : 
+              coach.expertise : 
+            [],
+          specialties: coach.specialties ? 
+            typeof coach.specialties === 'string' ? 
+              JSON.parse(coach.specialties) : 
+              coach.specialties : 
+            [],
+          industries: coach.industries ? 
+            typeof coach.industries === 'string' ? 
+              JSON.parse(coach.industries) : 
+              coach.industries : 
+            [],
+          yearsExperience: user.yearsExperience || 0,
+          certifications: coach.certifications ? 
+            typeof coach.certifications === 'string' ? 
+              JSON.parse(coach.certifications) : 
+              coach.certifications : 
+            [],
+          coachingStyle: user.coachingStyle || '',
+          bio: user.bio || '',
+          matchScore: match?.matchScore || null,
+          matchReason: match?.matchReason || null,
+          matchStatus: match?.status || null,
+          matchId: match?.id || null,
+          conversationId: match?.conversation?.id || null,
+          rating: coach.rating || 4.5,
+          totalReviews: user.totalReviews || Math.floor(Math.random() * 50) + 1,
+          availability: coach.availability ? 
+            typeof coach.availability === 'string' ? 
+              JSON.parse(coach.availability) : 
+              coach.availability : 
+            []
+        };
+      }).filter((coach): coach is NonNullable<typeof coach> => coach !== null);
+
+      // Separate coaches into categories
+      const existingMatches = transformedCoaches.filter(c => c.matchStatus);
+      const recommendedMatches = transformedCoaches.filter(c => !c.matchStatus && c.matchScore);
+      const availableUsers = transformedCoaches.filter(c => !c.matchStatus && !c.matchScore);
+
+      return NextResponse.json({
+        existingMatches,
+        recommendedMatches,
+        availableUsers
+      });
+    }
   } catch (error) {
     console.error("Error in coach matching:", error);
-    return NextResponse.json({ 
-      existingMatches: [],
-      recommendedMatches: [],
-      availableUsers: []
-    });
+    return NextResponse.json(
+      { error: "Failed to get matches" },
+      { status: 500 }
+    );
   }
 }
 

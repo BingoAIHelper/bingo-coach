@@ -13,6 +13,7 @@ interface Message {
   content: string;
   type: string;
   createdAt: string;
+  senderId: string;
   sender: {
     id: string;
     name: string;
@@ -25,7 +26,14 @@ interface Message {
   assessment?: {
     id: string;
     title: string;
-    score: number;
+    sections?: Record<string, {
+      title: string;
+      questions: {
+        type: string;
+        question: string;
+        answer: string | string[];
+      }[];
+    }>;
   };
 }
 
@@ -62,6 +70,7 @@ export default function ConversationView({ conversationId }: ConversationViewPro
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [accepting, setAccepting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedAssessment, setSelectedAssessment] = useState<any>(null);
 
   // Fetch conversation details
   useEffect(() => {
@@ -122,8 +131,15 @@ export default function ConversationView({ conversationId }: ConversationViewPro
     };
 
     const fetchAssessments = async () => {
+      if (!conversation) return;
+
       try {
-        const response = await fetch("/api/assessments");
+        // Determine which user's assessments to fetch based on the conversation
+        const userId = session?.user?.id === conversation.coach.id 
+          ? conversation.seeker.id 
+          : conversation.coach.id;
+
+        const response = await fetch(`/api/assessments?userId=${userId}`);
         if (!response.ok) throw new Error("Failed to fetch assessments");
         const data = await response.json();
         setAssessments(data.assessments || []);
@@ -133,8 +149,10 @@ export default function ConversationView({ conversationId }: ConversationViewPro
     };
 
     fetchDocuments();
-    fetchAssessments();
-  }, []);
+    if (conversation) {
+      fetchAssessments();
+    }
+  }, [conversation, session?.user?.id]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -157,13 +175,33 @@ export default function ConversationView({ conversationId }: ConversationViewPro
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to accept match");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to accept match");
+      }
       
       const data = await response.json();
-      setConversation((prev: Conversation | null) => prev ? ({
-        ...prev,
-        status: "matched"
-      }) : null);
+      
+      // Update conversation status
+      setConversation((prev: Conversation | null) => {
+        if (!prev?.match) return null;
+        return {
+          ...prev,
+          status: "matched",
+          match: {
+            ...prev.match,
+            status: "matched",
+            id: prev.match.id
+          }
+        };
+      });
+      
+      // Refresh messages to get the new system messages
+      const messagesResponse = await fetch(`/api/conversations/${conversationId}/messages`);
+      if (messagesResponse.ok) {
+        const messagesData = await messagesResponse.json();
+        setMessages(messagesData.messages || []);
+      }
       
       toast({
         title: "Match Accepted",
@@ -173,7 +211,7 @@ export default function ConversationView({ conversationId }: ConversationViewPro
       console.error("Error accepting match:", error);
       toast({
         title: "Error",
-        description: "Failed to accept match. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to accept match. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -214,6 +252,38 @@ export default function ConversationView({ conversationId }: ConversationViewPro
     }
   };
 
+  const handleAssessmentClick = (assessmentId: string) => {
+    const assessment = assessments.find(a => a.id === assessmentId);
+    if (assessment) {
+      setSelectedAssessment(assessment);
+    }
+  };
+
+  const renderAssessmentSummary = (message: Message) => {
+    if (!message.assessment) return null;
+    
+    return (
+      <div className="mt-2 p-3 bg-muted rounded-lg">
+        <h4 className="font-medium">{message.assessment.title}</h4>
+        {message.assessment.sections && Object.entries(message.assessment.sections).map(([key, section]) => (
+          <div key={key} className="mt-2">
+            <h5 className="text-sm font-medium">{section.title}</h5>
+            <div className="mt-1 space-y-1">
+              {section.questions.map((q, idx) => (
+                <div key={idx} className="text-sm">
+                  <p className="text-muted-foreground">{q.question}</p>
+                  <p className="font-medium">
+                    {Array.isArray(q.answer) ? q.answer.join(', ') : q.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Card className="h-[600px] flex items-center justify-center">
@@ -241,40 +311,75 @@ export default function ConversationView({ conversationId }: ConversationViewPro
           </div>
         )}
         {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.sender.id === session?.user?.id ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-[70%] rounded-lg p-3 ${
+          <div key={message.id} className="flex flex-col space-y-2">
+            <div className={`flex ${message.sender.id === session?.user?.id ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[70%] rounded-lg p-3 ${
                 message.sender.id === session?.user?.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted"
-              }`}
-            >
-              {message.type === "document_ref" && message.document ? (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span>{message.document.title}</span>
-                </div>
-              ) : message.type === "assessment_ref" && message.assessment ? (
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Assessment: {message.assessment.title}</span>
-                </div>
-              ) : (
-                <p>{message.content}</p>
-              )}
-              <div className="text-xs mt-1 opacity-70">
-                {new Date(message.createdAt).toLocaleTimeString()}
+              }`}>
+                {message.type === "document_ref" && message.document ? (
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>{message.document.title}</span>
+                  </div>
+                ) : message.type === "assessment_ref" && message.assessment?.id ? (
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer hover:underline"
+                    onClick={() => handleAssessmentClick(message.assessment.id)}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Assessment: {message.assessment.title}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm">{message.content}</p>
+                )}
+                {message.assessment && renderAssessmentSummary(message)}
               </div>
             </div>
+            <span className="text-xs text-muted-foreground">
+              {new Date(message.createdAt).toLocaleString()}
+            </span>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Assessment Details Modal */}
+      {selectedAssessment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-[90%] max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">{selectedAssessment.title}</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedAssessment(null)}
+                >
+                  Close
+                </Button>
+              </div>
+              
+              {selectedAssessment.sections?.map((section: any, idx: number) => (
+                <div key={idx} className="mb-6">
+                  <h4 className="font-medium mb-2">{section.title}</h4>
+                  <div className="space-y-2">
+                    {section.questions.map((q: any, qIdx: number) => (
+                      <div key={qIdx} className="text-sm">
+                        <p className="text-muted-foreground">{q.question}</p>
+                        <p className="font-medium">
+                          {Array.isArray(q.answer) ? q.answer.join(', ') : q.answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Input Area */}
       <div className="p-4 border-t">

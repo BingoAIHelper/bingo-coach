@@ -95,16 +95,114 @@ export default function PersonalAssessment() {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("/api/assessments", {
+      const assessment = {
+        title: "Personal Assessment",
+        description: "Initial assessment for job seeker profile",
+        sections: [
+          {
+            title: "Disabilities and Accommodations",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What disabilities or accommodations do you need?",
+                options: disabilityOptions.map(opt => opt.label),
+                answer: formData.disabilities.map(id => 
+                  disabilityOptions.find(opt => opt.id === id)?.label
+                ).filter(Boolean)
+              },
+              {
+                type: "text",
+                question: "Additional details about disabilities or accommodations",
+                answer: formData.disabilityDetails
+              }
+            ]
+          },
+          {
+            title: "Job Preferences",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What type of jobs are you interested in?",
+                options: jobPreferenceOptions.map(opt => opt.label),
+                answer: formData.jobPreferences.map(id => 
+                  jobPreferenceOptions.find(opt => opt.id === id)?.label
+                ).filter(Boolean)
+              },
+              {
+                type: "text",
+                question: "Preferred industry",
+                answer: formData.jobIndustry
+              },
+              {
+                type: "text",
+                question: "Expected timeframe for job search",
+                answer: formData.timeframe
+              }
+            ]
+          },
+          {
+            title: "Learning and Communication",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What are your preferred learning styles?",
+                options: learningStyleOptions.map(opt => opt.label),
+                answer: formData.learningStyles.map(id => 
+                  learningStyleOptions.find(opt => opt.id === id)?.label
+                ).filter(Boolean)
+              },
+              {
+                type: "multiple_choice",
+                question: "What are your preferred communication styles?",
+                options: communicationStyleOptions.map(opt => opt.label),
+                answer: formData.communicationStyles.map(id => 
+                  communicationStyleOptions.find(opt => opt.id === id)?.label
+                ).filter(Boolean)
+              }
+            ]
+          },
+          {
+            title: "Additional Information",
+            questions: [
+              {
+                type: "multiple_choice",
+                question: "What kind of assistance do you need?",
+                options: formData.assistanceNeeded.map(id => 
+                  id.charAt(0).toUpperCase() + id.slice(1)
+                ),
+                answer: formData.assistanceNeeded.map(id => 
+                  id.charAt(0).toUpperCase() + id.slice(1)
+                )
+              },
+              {
+                type: "text",
+                question: "Any additional information you'd like to share?",
+                answer: formData.additionalInfo
+              }
+            ]
+          }
+        ]
+      };
+
+      console.log('Submitting assessment:', JSON.stringify(assessment, null, 2));
+
+      const response = await fetch("/api/assessments/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ assessment }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error("Failed to submit assessment");
+        console.error('Server response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData
+        });
+        throw new Error(responseData.error || "Failed to submit assessment");
       }
       
       toast.success("Assessment completed successfully!");
@@ -114,7 +212,7 @@ export default function PersonalAssessment() {
       }
     } catch (error) {
       console.error("Error submitting assessment:", error);
-      toast.error("Failed to submit assessment. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Failed to submit assessment. Please try again.");
     }
   };
 

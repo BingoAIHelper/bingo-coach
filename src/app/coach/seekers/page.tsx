@@ -27,6 +27,18 @@ interface Seeker {
   matchScore?: number;
   matchReason?: string;
   assessmentCompleted: boolean;
+  assessment?: {
+    title: string;
+    sections: {
+      title: string;
+      questions: {
+        type: string;
+        question: string;
+        answer: string | string[];
+      }[];
+    }[];
+    completedAt: string;
+  };
   lastActive: string;
   matchStatus?: string;
   matchId?: string;
@@ -72,19 +84,23 @@ export default function CoachSeekersPage() {
           matchStatus: match.status,
           matchId: match.id,
           conversationId: match.conversation?.id,
-          assessmentCompleted: match.seeker.assessments?.length > 0
+          assessmentCompleted: match.seeker.assessmentCompleted,
+          assessment: match.seeker.assessment,
+          lastActive: match.seeker.lastActive
         }));
 
         // Transform recommended matches into seeker objects
-        const recommendedSeekers = data.recommendedMatches.map((match: any) => ({
-          id: match.seekerId,
-          name: match.seeker?.name || '',
-          title: match.seeker?.title || '',
-          avatar: match.seeker?.avatar || '',
-          location: match.seeker?.location || '',
-          matchScore: match.matchScore,
-          matchReason: match.matchReason,
-          assessmentCompleted: match.seeker?.assessments?.length > 0
+        const recommendedSeekers = data.recommendedMatches.map((seeker: any) => ({
+          id: seeker.id,
+          name: seeker.name || '',
+          title: seeker.title || '',
+          avatar: seeker.avatar || '',
+          location: seeker.location || '',
+          matchScore: seeker.matchScore,
+          matchReason: seeker.matchReason,
+          assessmentCompleted: seeker.assessmentCompleted,
+          assessment: seeker.assessment,
+          lastActive: seeker.lastActive
         }));
 
         // Transform available seekers into seeker objects
@@ -94,7 +110,9 @@ export default function CoachSeekersPage() {
           title: seeker.title || '',
           avatar: seeker.avatar || '',
           location: seeker.location || '',
-          assessmentCompleted: seeker.assessments?.length > 0
+          assessmentCompleted: seeker.assessmentCompleted,
+          assessment: seeker.assessment,
+          lastActive: seeker.lastActive
         }));
 
         setExistingMatches(matchedSeekers);
@@ -113,6 +131,7 @@ export default function CoachSeekersPage() {
 
   const SeekerCard = ({ seeker, isRecommended = false, isMatched = false, matchStatus }: { seeker: Seeker; isRecommended?: boolean; isMatched?: boolean; matchStatus?: string }) => {
     const [isRequesting, setIsRequesting] = useState(false);
+    const [showAssessment, setShowAssessment] = useState(false);
     const { data: session } = useSession();
     const router = useRouter();
 
@@ -191,6 +210,55 @@ export default function CoachSeekersPage() {
       if (seeker.conversationId) {
         router.push(`/messages/${seeker.conversationId}`);
       }
+    };
+
+    const renderAssessmentSummary = () => {
+      if (!seeker.assessment) return null;
+
+      return (
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Target className="h-4 w-4" />
+              Assessment Summary
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAssessment(!showAssessment)}
+            >
+              {showAssessment ? 'Hide Details' : 'Show Details'}
+            </Button>
+          </div>
+
+          {showAssessment && (
+            <div className="space-y-4 bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">{seeker.assessment.title}</h4>
+                <span className="text-sm text-muted-foreground">
+                  Completed {new Date(seeker.assessment.completedAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              {seeker.assessment.sections.map((section, idx) => (
+                <div key={idx} className="space-y-2">
+                  <h5 className="text-sm font-medium">{section.title}</h5>
+                  <div className="space-y-1">
+                    {section.questions.map((q, qIdx) => (
+                      <div key={qIdx} className="text-sm">
+                        <p className="text-muted-foreground">{q.question}</p>
+                        <p className="font-medium">
+                          {Array.isArray(q.answer) ? q.answer.join(', ') : q.answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
     };
 
     return (
@@ -327,6 +395,8 @@ export default function CoachSeekersPage() {
                 )}
               </div>
             </div>
+
+            {seeker.assessmentCompleted && renderAssessmentSummary()}
 
             {(isRecommended || isMatched) && seeker.matchReason && (
               <div className="mt-4 p-3 bg-primary/5 rounded-lg">

@@ -18,14 +18,53 @@ import {
   Brain,
   ClipboardList,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import CoachResources from "@/components/dashboard/CoachResources";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+interface AIInsight {
+  title: string;
+  description: string;
+  action: string;
+}
+
+interface AIInsights {
+  progressPatterns: AIInsight[];
+  assessmentRecommendations: AIInsight[];
+}
 
 export default function CoachDashboardPage() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
-  
+  const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+
+  useEffect(() => {
+    const fetchInsights = async () => {
+      try {
+        const response = await fetch('/api/coach/insights');
+        if (!response.ok) {
+          throw new Error('Failed to fetch insights');
+        }
+        const data = await response.json();
+        setInsights(data);
+      } catch (error) {
+        console.error('Error fetching insights:', error);
+        toast.error('Failed to load AI insights');
+      } finally {
+        setIsLoadingInsights(false);
+      }
+    };
+
+    if (status === "authenticated") {
+      fetchInsights();
+    }
+  }, [status]);
+
+  // Handle authentication redirects
   if (status === "unauthenticated") {
     redirect("/auth/signin");
   }
@@ -112,26 +151,46 @@ export default function CoachDashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <h4 className="font-medium">Seeker Progress Patterns</h4>
-                <p className="text-sm text-muted-foreground">
-                  3 seekers showing strong progress in technical interviews. Consider increasing challenge level.
-                </p>
-              </div>
-              <Button size="sm">View Details</Button>
+          {isLoadingInsights ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <h4 className="font-medium">Assessment Recommendations</h4>
-                <p className="text-sm text-muted-foreground">
-                  Frontend development assessments have 90% completion rate. Consider adding advanced modules.
-                </p>
+          ) : insights ? (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Seeker Progress Patterns</h4>
+                <div className="space-y-3">
+                  {insights.progressPatterns.map((pattern, index) => (
+                    <div key={index} className="flex items-start gap-4">
+                      <div className="flex-1">
+                        <h5 className="font-medium">{pattern.title}</h5>
+                        <p className="text-sm text-muted-foreground">{pattern.description}</p>
+                      </div>
+                      <Button size="sm" variant="outline">{pattern.action}</Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Button size="sm">Review</Button>
+              <div>
+                <h4 className="font-medium mb-2">Assessment Recommendations</h4>
+                <div className="space-y-3">
+                  {insights.assessmentRecommendations.map((recommendation, index) => (
+                    <div key={index} className="flex items-start gap-4">
+                      <div className="flex-1">
+                        <h5 className="font-medium">{recommendation.title}</h5>
+                        <p className="text-sm text-muted-foreground">{recommendation.description}</p>
+                      </div>
+                      <Button size="sm" variant="outline">{recommendation.action}</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No insights available at the moment.
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -169,25 +228,20 @@ export default function CoachDashboardPage() {
               }
             ].map((task, index) => (
               <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                  <div className={`w-2 h-2 rounded-full ${
+                    task.priority === "high" ? "bg-red-500" :
+                    task.priority === "medium" ? "bg-yellow-500" :
+                    "bg-green-500"
+                  }`} />
+                  <div>
                     <h4 className="font-medium">{task.task}</h4>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      task.priority === "high" 
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                    }`}>
-                      {task.priority}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-muted-foreground">Due: {task.due}</span>
-                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                      {task.type}
-                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      Due {task.due} • {task.type}
+                    </p>
                   </div>
                 </div>
-                <Button size="sm">Start</Button>
+                <Button variant="outline" size="sm">View</Button>
               </div>
             ))}
           </div>
