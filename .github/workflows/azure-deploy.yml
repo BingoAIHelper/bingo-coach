@@ -21,10 +21,16 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
+    - name: Generate encryption key
+      run: |
+        ENCRYPTION_KEY=$(openssl rand -base64 32)
+        echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
+    
     - name: Build application
       run: npm run azure-build
       env:
         NODE_ENV: production
+        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
     
     - name: Login to Azure
       uses: azure/login@v1
@@ -36,6 +42,9 @@ jobs:
       with:
         app-name: 'bingo-job-coach-platform'
         package: './out.zip'
+        app-settings: |
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+          NODE_ENV=production
     
     - name: Logout from Azure
       run: az logout

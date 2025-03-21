@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as cosmosDb from '../azure/cosmos';
+import { encryptMessage, decryptMessage } from "@/lib/utils/encryption";
 
 // Determine the database type from environment variables
 const dbType = process.env.DB_TYPE || 'local';
@@ -1028,6 +1029,15 @@ export async function createMessage(data: {
       ? conversation.seeker.id 
       : conversation.coach.userId;
 
+    // Verify encryption key exists
+    const encryptionKey = process.env.ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw new Error("Encryption key not configured");
+    }
+
+    // Encrypt the message content
+    const encryptedContent = await encryptMessage(data.content, encryptionKey);
+
     // Create the message with the receiver
     const message = await prisma.message.create({
       data: {
@@ -1040,7 +1050,7 @@ export async function createMessage(data: {
         receiver: {
           connect: { id: receiverId }
         },
-        content: data.content,
+        content: encryptedContent,
         type: data.type || "text",
         ...(data.documentId && {
           document: {
@@ -1083,10 +1093,90 @@ export async function createMessage(data: {
       }
     });
 
-    return message;
+    // Decrypt the content before returning
+    const decryptedMessage = {
+      ...message,
+      content: await decryptMessage(message.content, encryptionKey)
+    };
+
+    return decryptedMessage;
   } catch (error) {
     console.error("Error creating message:", error);
     throw error;
+  }
+}
+
+export async function getMessagesByConversationId(conversationId: string) {
+  try {
+    // Verify encryption key exists
+    const encryptionKey = process.env.ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw new Error("Encryption key not configured");
+    }
+
+    const messages = await prisma.message.findMany({
+      where: {
+        conversationId: conversationId
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        document: {
+          select: {
+            id: true,
+            title: true,
+            fileName: true
+          }
+        },
+        assessment: {
+          select: {
+            id: true,
+            title: true,
+            sections: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+
+    // Decrypt all messages
+    const decryptedMessages = await Promise.all(
+      messages.map(async (message) => {
+        try {
+          return {
+            ...message,
+            content: await decryptMessage(message.content, encryptionKey)
+          };
+        } catch (error) {
+          console.error(`Error decrypting message ${message.id}:`, error);
+          return {
+            ...message,
+            content: "[Error: Message could not be decrypted]"
+          };
+        }
+      })
+    );
+
+    return decryptedMessages;
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    return [];
   }
 }
 
@@ -1217,56 +1307,6 @@ export async function getConversationById(conversationId: string) {
   } catch (error) {
     console.error("Error fetching conversation:", error);
     return null;
-  }
-}
-
-export async function getMessagesByConversationId(conversationId: string) {
-  try {
-    const messages = await prisma.message.findMany({
-      where: {
-        conversationId: conversationId
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        receiver: {
-          select: {
-            id: true,
-            name: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        document: {
-          select: {
-            id: true,
-            title: true,
-            fileName: true
-          }
-        },
-        assessment: {
-          select: {
-            id: true,
-            title: true,
-            sections: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
-
-    return messages;
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return [];
   }
 }
 

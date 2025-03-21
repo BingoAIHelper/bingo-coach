@@ -16,7 +16,10 @@
     "db:seed": "ts-node prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:setup": "npm run docker:up && npm run db:migrate && npm run db:seed",
-    "db:migrate-to-azure": "ts-node src/scripts/migrate-to-azure.ts"
+    "db:migrate-to-azure": "ts-node src/scripts/migrate-to-azure.ts",
+    "setup:local": "chmod +x ./scripts/setup-local.sh && ./scripts/setup-local.sh",
+    "deploy:azure": "chmod +x ./scripts/deploy-azure.sh && ./scripts/deploy-azure.sh",
+    "build:azure": "next build && next export"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",

@@ -19,11 +19,13 @@ import {
   ClipboardList,
   TrendingUp,
   AlertCircle,
-  Loader2
+  Loader2,
+  Plus
 } from "lucide-react";
 import CoachResources from "@/components/dashboard/CoachResources";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import AddSeekerForm from "@/components/dashboard/AddSeekerForm";
 
 interface AIInsight {
   title: string;
@@ -90,9 +92,24 @@ export default function CoachDashboardPage() {
             Welcome back, {session?.user?.name || "Coach"}! Here's your overview.
           </p>
         </div>
-        <Button variant="outline" size="icon" className="rounded-xl">
-          <Bell className="h-5 w-5" />
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" className="rounded-xl">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="default" 
+            className="rounded-xl"
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("section", "add-seeker");
+              window.history.pushState({}, "", url.toString());
+              window.location.reload();
+            }}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Seeker
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -315,6 +332,16 @@ export default function CoachDashboardPage() {
           <div className="container max-w-6xl mx-auto p-8">
             {searchParams.get("section") === "resources" && (
               <CoachResources />
+            )}
+            {searchParams.get("section") === "add-seeker" && (
+              <AddSeekerForm 
+                onSuccess={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("section");
+                  window.history.pushState({}, "", url.toString());
+                  window.location.reload();
+                }}
+              />
             )}
             {!searchParams.get("section") && renderDashboard()}
           </div>

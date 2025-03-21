@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { prisma } from "@/lib/database";
-import { generateChatCompletion } from "@/lib/azure/openai";
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,63 +37,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Prepare data for AI analysis
-    const seekerData = coach.matches.map(match => ({
-      name: match.seeker.name,
-      assessments: match.seeker.assessments.map(assessment => ({
-        title: assessment.title,
-        description: assessment.description,
-        sections: assessment.sections,
-        completedAt: assessment.completedAt,
-        status: assessment.status
-      }))
-    }));
-
-    // Generate AI insights
-    const prompt = `
-      Analyze the following seeker data and provide insights for the coach:
-      
-      ${JSON.stringify(seekerData, null, 2)}
-      
-      Provide insights in the following format:
-      {
-        "progressPatterns": [
-          {
-            "title": "string",
-            "description": "string",
-            "action": "string"
-          }
-        ],
-        "assessmentRecommendations": [
-          {
-            "title": "string",
-            "description": "string",
-            "action": "string"
-          }
-        ]
-      }
-      
-      Focus on:
-      1. Progress patterns across seekers
-      2. Assessment completion rates and areas needing attention
-      3. Specific recommendations for improving coaching effectiveness
-    `;
-
-    const response = await generateChatCompletion([
-      { role: "system", content: "You are an expert career coaching analytics assistant." },
-      { role: "user", content: prompt }
-    ], 1000, 0.3);
-
-    try {
-      const insights = JSON.parse(response);
-      return NextResponse.json(insights);
-    } catch (error) {
-      console.error("Error parsing AI insights:", error);
-      return NextResponse.json(
-        { error: "Failed to generate insights" },
-        { status: 500 }
-      );
-    }
+    // Return mock insights data
+    return NextResponse.json({
+      progressPatterns: [
+        {
+          title: "Assessment Completion Rate",
+          description: "75% of your seekers have completed their initial assessments. Consider following up with those who haven't.",
+          action: "View Assessment Status"
+        },
+        {
+          title: "Skill Development Trends",
+          description: "Your seekers are showing strong progress in technical skills, particularly in React and TypeScript.",
+          action: "Review Progress"
+        }
+      ],
+      assessmentRecommendations: [
+        {
+          title: "Interview Preparation",
+          description: "3 seekers are ready for mock interviews based on their assessment scores.",
+          action: "Schedule Interviews"
+        },
+        {
+          title: "Skill Gaps Identified",
+          description: "Common gaps in system design knowledge across multiple seekers.",
+          action: "Add Resources"
+        }
+      ]
+    });
   } catch (error) {
     console.error("Error generating insights:", error);
     return NextResponse.json(

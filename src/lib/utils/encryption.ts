@@ -34,13 +34,73 @@ async function getKey(secret: string, salt: Buffer): Promise<Buffer> {
   return Buffer.from(key);
 }
 
-// Temporarily disable encryption for debugging
-export function encryptMessage(message: string, key: string): string {
-  return message;
+/**
+ * Encrypt a message using AES-256-GCM
+ */
+export async function encryptMessage(message: string, secret: string): Promise<string> {
+  try {
+    // Generate a random salt and IV
+    const salt = randomBytes(SALT_LENGTH);
+    const iv = randomBytes(IV_LENGTH);
+
+    // Generate key from secret and salt
+    const key = await getKey(secret, salt);
+
+    // Create cipher
+    const cipher = createCipheriv(ALGORITHM, key, iv);
+
+    // Encrypt the message
+    const encrypted = Buffer.concat([
+      cipher.update(message, 'utf8'),
+      cipher.final()
+    ]);
+
+    // Get the auth tag
+    const tag = cipher.getAuthTag();
+
+    // Combine all components
+    const result = Buffer.concat([salt, iv, tag, encrypted]);
+
+    // Return as base64 string
+    return result.toString('base64');
+  } catch (error) {
+    console.error('Encryption error:', error);
+    throw new Error('Failed to encrypt message');
+  }
 }
 
-export function decryptMessage(encrypted: string, key: string): string {
-  return encrypted;
+/**
+ * Decrypt a message using AES-256-GCM
+ */
+export async function decryptMessage(encryptedMessage: string, secret: string): Promise<string> {
+  try {
+    // Convert base64 string back to buffer
+    const buffer = Buffer.from(encryptedMessage, 'base64');
+
+    // Extract components
+    const salt = buffer.subarray(0, SALT_LENGTH);
+    const iv = buffer.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const tag = buffer.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+    const encrypted = buffer.subarray(SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+
+    // Generate key from secret and salt
+    const key = await getKey(secret, salt);
+
+    // Create decipher
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
+
+    // Decrypt the message
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final()
+    ]);
+
+    return decrypted.toString('utf8');
+  } catch (error) {
+    console.error('Decryption error:', error);
+    throw new Error('Failed to decrypt message');
+  }
 }
 
 /**
