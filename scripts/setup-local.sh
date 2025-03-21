@@ -50,19 +50,36 @@ prompt_input() {
     fi
 }
 
-# Create .env.local file
-echo -e "${YELLOW}Setting up environment variables...${NC}"
-cat > .env.local << EOL
+# Generate secure keys
+echo -e "${YELLOW}Generating secure keys...${NC}"
+ENCRYPTION_KEY=$(openssl rand -base64 32)
+JWT_SECRET=$(openssl rand -base64 32)
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+
+# Create .env file with base configuration
+echo -e "${YELLOW}Setting up base environment variables...${NC}"
+cat > .env << EOL
 # Database Configuration
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bingo?schema=public"
 
 # NextAuth.js Configuration
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="$(openssl rand -base64 32)"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 
 # Message Encryption
-ENCRYPTION_KEY="$(openssl rand -base64 32)"
+ENCRYPTION_KEY="${ENCRYPTION_KEY}"
 
+# JWT Configuration
+JWT_SECRET="${JWT_SECRET}"
+
+# Application Settings
+NODE_ENV="development"
+DB_TYPE="local"
+EOL
+
+# Create .env.local file with development-specific settings
+echo -e "${YELLOW}Setting up development environment variables...${NC}"
+cat > .env.local << EOL
 # Azure OpenAI Configuration (Optional)
 AZURE_OPENAI_API_KEY="$(prompt_input "Enter Azure OpenAI API Key (optional)" "")"
 AZURE_OPENAI_ENDPOINT="$(prompt_input "Enter Azure OpenAI Endpoint (optional)" "")"
@@ -87,9 +104,19 @@ AZURE_COMMUNICATION_CONNECTION_STRING="$(prompt_input "Enter Azure Communication
 MICROSOFT_CLIENT_ID="$(prompt_input "Enter Microsoft Client ID (optional)" "")"
 MICROSOFT_CLIENT_SECRET="$(prompt_input "Enter Microsoft Client Secret (optional)" "")"
 
-# Application Settings
+# Development Settings
 NODE_ENV="development"
 DB_TYPE="local"
+EOL
+
+# Save sensitive keys to a secure file
+echo -e "${YELLOW}Saving sensitive keys to .env.keys (make sure to keep this file secure)...${NC}"
+cat > .env.keys << EOL
+# Generated on $(date)
+# Keep these keys secure and never commit them to version control
+ENCRYPTION_KEY="${ENCRYPTION_KEY}"
+JWT_SECRET="${JWT_SECRET}"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 EOL
 
 # Start Docker containers
