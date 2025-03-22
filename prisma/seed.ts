@@ -44,17 +44,37 @@ async function main() {
 
   // Create a coach
   const coach = await prisma.coach.upsert({
-    where: { email: 'coach@example.com' },
+    where: {
+      email: "coach@example.com"
+    },
     update: {},
     create: {
-      name: 'Career Coach',
-      email: 'coach@example.com',
-      bio: 'Experienced career coach with 10+ years helping job seekers find their dream positions.',
-      expertise: 'Resume Writing, Interview Preparation, Career Transition',
-      hourlyRate: 75.0,
+      name: "Career Coach",
+      email: "coach@example.com",
+      bio: "Experienced career coach with 10+ years helping job seekers find their dream positions.",
+      expertise: "Resume Writing, Interview Preparation, Career Transition",
+      specialties: "Career Growth, Leadership Development",
+      industries: "Technology, Finance",
+      languages: "English, Spanish",
+      certifications: "Certified Career Coach (CCC)",
+      hourlyRate: 75,
       rating: 4.8,
-      availability: 'Mon-Fri, 9am-5pm ET',
-    },
+      availability: "Mon-Fri, 9am-5pm ET",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      user: {
+        create: {
+          id: "unique-user-id", // Replace with a unique ID or remove if auto-generated
+          email: "coach@example.com",
+          password: hashedCoachPassword, // Replace with a securely hashed password
+          role: "coach",
+          isCoach: true,
+          name: "Career Coach",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      }
+    }
   });
 
   // Create jobs
@@ -108,6 +128,9 @@ University of Technology, 2017
 
 ## Skills
 JavaScript, TypeScript, React, Node.js, SQL, Git`,
+      file: null, // Optional field
+      createdAt: new Date(),
+      updatedAt: new Date()
     },
   });
 
@@ -116,8 +139,11 @@ JavaScript, TypeScript, React, Node.js, SQL, Git`,
     data: {
       userId: user1.id,
       title: 'Career Readiness Assessment',
-      score: 85,
-      feedback: 'Strong technical skills but could improve communication and leadership examples in resume.',
+      description: 'Evaluate readiness for career transition.',
+      sections: JSON.stringify([{ title: "Technical Skills", score: 90 }, { title: "Soft Skills", score: 80 }]),
+      status: 'completed',
+      createdAt: new Date(),
+      updatedAt: new Date()
     },
   });
 
@@ -129,6 +155,9 @@ JavaScript, TypeScript, React, Node.js, SQL, Git`,
       status: 'Applied',
       coverLetter: 'Dear Hiring Manager, I am excited to apply for the Software Engineer position at Tech Solutions Inc...',
       resumeId: resume.id,
+      feedback: null, // Optional field
+      submittedDate: new Date(),
+      updatedAt: new Date()
     },
   });
 

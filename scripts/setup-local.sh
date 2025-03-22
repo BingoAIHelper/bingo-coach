@@ -60,7 +60,7 @@ NEXTAUTH_SECRET=$(openssl rand -base64 32)
 echo -e "${YELLOW}Setting up base environment variables...${NC}"
 cat > .env << EOL
 # Database Configuration
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bingo?schema=public"
+DATABASE_URL="sqlserver://localhost:1433;database=bingo_db;user=sa;password=YourStrongPassword123!;trustServerCertificate=true"
 
 # NextAuth.js Configuration
 NEXTAUTH_URL="http://localhost:3000"
@@ -80,31 +80,46 @@ EOL
 # Create .env.local file with development-specific settings
 echo -e "${YELLOW}Setting up development environment variables...${NC}"
 cat > .env.local << EOL
-# Azure OpenAI Configuration (Optional)
+# Azure OpenAI Configuration (Requird for AI features)
 AZURE_OPENAI_API_KEY="$(prompt_input "Enter Azure OpenAI API Key (optional)" "")"
 AZURE_OPENAI_ENDPOINT="$(prompt_input "Enter Azure OpenAI Endpoint (optional)" "")"
 AZURE_OPENAI_DEPLOYMENT_NAME="$(prompt_input "Enter Azure OpenAI Deployment Name (optional)" "")"
 
-# Azure Storage Configuration (Optional)
+# Azure Storage Configuration (Required for file uploads)
 AZURE_STORAGE_CONNECTION_STRING="$(prompt_input "Enter Azure Storage Connection String (optional)" "")"
 AZURE_STORAGE_CONTAINER="$(prompt_input "Enter Azure Storage Container Name (optional)" "")"
 
-# Azure Form Recognizer Configuration (Optional)
+# Azure Form Recognizer Configuration (Required for AI features)
 AZURE_FORM_RECOGNIZER_KEY="$(prompt_input "Enter Azure Form Recognizer Key (optional)" "")"
 AZURE_FORM_RECOGNIZER_ENDPOINT="$(prompt_input "Enter Azure Form Recognizer Endpoint (optional)" "")"
 
-# Azure Text Analytics Configuration (Optional)
+# Azure Text Analytics Configuration (Required for AI features)
 AZURE_TEXT_ANALYTICS_KEY="$(prompt_input "Enter Azure Text Analytics Key (optional)" "")"
 AZURE_TEXT_ANALYTICS_ENDPOINT="$(prompt_input "Enter Azure Text Analytics Endpoint (optional)" "")"
 
-# Azure Communication Services Configuration (Optional)
+# Azure Language (Required for AI features)
+AZURE_LANGUAGE_ENDPOINT="$(prompt_input "Enter Azure Language Endpoint (optional)" "")"
+AZURE_LANGUAGE_KEY="$(prompt_input "Enter Azure Language Key (optional)" "")
+
+# Azure Communication Services Configuration (Required for chat features)
 AZURE_COMMUNICATION_CONNECTION_STRING="$(prompt_input "Enter Azure Communication Connection String (optional)" "")"
 
 # Microsoft Authentication (Optional)
 MICROSOFT_CLIENT_ID="$(prompt_input "Enter Microsoft Client ID (optional)" "")"
 MICROSOFT_CLIENT_SECRET="$(prompt_input "Enter Microsoft Client Secret (optional)" "")"
 
-# Development Settings
+# Azure Tenant Configuration (Optional)
+AZURE_TENANT_ID="placeholder-tenant-id"
+AZURE_CLIENT_ID="placeholder-client-id"
+AZURE_CLIENT_SECRET="placeholder-client-secret"
+
+# Azure Cosmos DB
+AZURE_COSMOS_ENDPOINT="https://placeholder-cosmos-db.documents.azure.com/"
+AZURE_COSMOS_KEY="placeholder-cosmos-key"
+AZURE_COSMOS_DATABASE="bingo-database"
+
+
+# Azure Configuration
 NODE_ENV="development"
 DB_TYPE="local"
 EOL
