@@ -43,7 +43,7 @@ Bingo is a comprehensive job coaching platform designed specifically for individ
 
 ### Local Development Setup
 
-## Using Bash:
+#### Using Bash:
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/bingo-job-coach-platform.git
