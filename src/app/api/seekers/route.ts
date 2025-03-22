@@ -42,6 +42,7 @@ interface Seeker {
   updatedAt: string;
   assessment?: Assessment;
   matches?: CoachMatch[];
+  assessmentCompleted?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -80,7 +81,8 @@ export async function GET(request: NextRequest) {
         seeker: {
           ...user,
           assessment,
-          matches
+          matches,
+          assessmentCompleted: user.assessmentCompleted
         }
       });
     }

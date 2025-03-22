@@ -142,7 +142,8 @@ export async function getUserById(userId: string) {
           updatedAt: true,
           location: true,
           phone: true,
-          password: true // Added password for auth
+          password: true, // Added password for auth
+          assessmentCompleted: true // Added assessmentCompleted field
         }
       });
     } catch (error) {
