@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter as GeistSans, Roboto_Mono as GeistMono } from "next/font/google";
+import { Inter as GeistSans, Roboto_Mono as GeistMono, Caveat } from "next/font/google";
 import { SessionProvider } from "@/components/SessionProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AccessibilityProvider } from "@/context/AccessibilityContext";
@@ -16,6 +16,11 @@ const geistSans = GeistSans({
 const geistMono = GeistMono({ 
   subsets: ["latin"],
   variable: "--font-geist-mono",
+});
+
+const caveat = Caveat({ 
+  subsets: ["latin"],
+  variable: "--font-caveat-mono",
 });
 
 export const metadata: Metadata = {

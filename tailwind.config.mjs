@@ -16,6 +16,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        caveat: ["Caveat", "cursive"],
+      },
       colors: {
         border: "var(--border)",
         input: "var(--input)",
@@ -73,4 +76,4 @@ export default {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

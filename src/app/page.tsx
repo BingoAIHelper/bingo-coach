@@ -11,9 +11,11 @@ export default function HomePage() {
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="flex flex-col justify-center space-y-6">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl xl:text-7xl">
-                  Bingo! Job Coach Platform
-                </h1>
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl xl:text-7xl">
+                Bingo
+                <span className="font-caveat text-red-500">! </span> 
+                Job Coach Platform
+              </h1>
                 <p className="text-xl text-muted-foreground max-w-[600px] leading-relaxed">
                   A comprehensive job coaching platform designed for individuals with disabilities.
                   Find your perfect job match, connect with specialized coaches, and access resources
