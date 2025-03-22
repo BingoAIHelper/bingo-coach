@@ -49,9 +49,13 @@ git clone https://github.com/yourusername/bingo-job-coach-platform.git
 cd bingo-job-coach-platform
 ```
 
-2. Run the setup script:
+2. Run the setup script (based on OS):
 ```bash
-npm run setup:local
+npm run setup:local-windows
+```
+
+```bash
+npm run setup:local-mac
 ```
 
 This will:
@@ -69,6 +73,10 @@ This will:
 npm run dev
 ```
 
+4. Start the development backend server:
+```bash
+npm run db:studio
+```
 ### Azure Deployment
 
 1. Make sure you have the Azure CLI installed and are logged in:
@@ -89,7 +97,8 @@ This will:
 
 ## Available Scripts
 
-- `npm run setup:local` - Set up local development environment
+- `npm run setup:local-mac` - Set up local development environment
+- `npm run setup:local-windows` - Set up local development environment
 - `npm run deploy:azure` - Deploy to Azure
 - `npm run dev` - Start development server
 - `npm run build` - Build the application
